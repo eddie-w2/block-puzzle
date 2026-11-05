@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Sector 8</string>
+    <color name="void_black">#04060C</color>
+
+    <style name="Sector8Theme" parent="android:Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@color/void_black</item>
+        <item name="android:statusBarColor">@color/void_black</item>
+        <item name="android:navigationBarColor">@color/void_black</item>
+    </style>
+</resources>

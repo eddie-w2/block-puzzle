@@ -1,0 +1,60 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Signing: GitHub Actions secrets win if present, otherwise app/signing/signing.properties.
+def signingProps = new Properties()
+def propsFile = file('signing/signing.properties')
+if (propsFile.exists()) propsFile.withInputStream { signingProps.load(it) }
+def envKeystore = System.getenv('SIGNING_KEYSTORE_PATH')
+
+// Each CI build gets a higher versionCode so phones accept it as an update.
+def buildNumber = (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
+
+android {
+    namespace 'io.github.eddiew2.sector8'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'io.github.eddiew2.sector8'
+        minSdk 24
+        targetSdk 34
+        versionCode buildNumber
+        versionName "1.0.${buildNumber}"
+    }
+
+    signingConfigs {
+        release {
+            if (envKeystore) {
+                storeFile file(envKeystore)
+                storePassword System.getenv('SIGNING_STORE_PASSWORD')
+                keyAlias System.getenv('SIGNING_KEY_ALIAS')
+                keyPassword System.getenv('SIGNING_KEY_PASSWORD')
+            } else if (signingProps['storeFile']) {
+                storeFile file("signing/${signingProps['storeFile']}")
+                storePassword signingProps['storePassword']
+                keyAlias signingProps['keyAlias']
+                keyPassword signingProps['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+        debug {
+            applicationIdSuffix '.debug'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.11.0'
+}
