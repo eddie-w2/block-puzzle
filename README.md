@@ -18,7 +18,7 @@ Bonuses reward long links, clearing the last square of a color, big loops and em
 
 **Gravity:** Link with gravity always on. Pieces fall to the bottom as soon as you place them, and squares drop into gaps left by links.
 
-**Classic Dots:** the original dots game, endless. A full board, and new dots drop in as you clear. End the game from the pause menu to save your score.
+**Classic Dots:** the original dots game, endless. A full board, and new squares drop in as you clear. Uses the same credits, shop and items. End the game from the pause menu to save your score.
 
 **Classic Blocks:** fill rows or columns to clear them, and chain clears for bonus points.
 
