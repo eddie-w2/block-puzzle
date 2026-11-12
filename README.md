@@ -2,7 +2,7 @@
 
 # Sector 8
 
-A moody, rain-soaked cyberpunk block puzzle for Android. Drag pieces onto an 8×8 grid and clear them. Four main modes (Link, Gravity, Classic Dots, Classic Blocks) plus Rush and Daily Sector.
+A moody, rain-soaked cyberpunk block puzzle for Android. Drag pieces onto an 8×8 grid and clear them. Four main modes (Link, Gravity, Classic Dots, Classic Blocks) plus Rush, Daily Sector, Surge and Corruption.
 
 ## Modes
 
@@ -25,6 +25,10 @@ Bonuses reward long links, clearing the last square of a color, big loops and em
 **Rush:** Classic Dots on a 60-second clock. Every loop adds 3 seconds.
 
 **Daily Sector:** one board a day, the same for everyone, on Link's rules with no items or undo. One try per day.
+
+**Surge:** no pieces and gravity always on. Every few links a new row pushes up from below; don't let the stack reach the top.
+
+**Corruption:** Link with static squares that spread every 3 moves. Link right beside static to purge it.
 
 An optional Undo button can be turned on in Settings.
 

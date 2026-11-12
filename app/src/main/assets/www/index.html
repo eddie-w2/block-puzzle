@@ -166,7 +166,8 @@ td.rk{color:var(--dim);width:2em;}
 #modeTag{display:flex;flex-direction:column;gap:5px;justify-content:center;height:52px;padding-left:14px;border-left:2px solid rgba(255,178,46,.7);}
 #modeTag b{font:400 13px/1 var(--f-display);letter-spacing:.14em;color:var(--amber);}
 #modeTag span{font-size:12px;color:var(--dim);}
-.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.seg .tab{font-size:11px;letter-spacing:.08em;}
 .seg .tab{flex:1;min-width:0;padding:0 4px;letter-spacing:.14em;}
 /* Link item bar + shop */
 #items{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;min-width:0;}
@@ -272,6 +273,8 @@ td.rk{color:var(--dim);width:2em;}
       <div class="modes" role="group" aria-label="More modes">
         <button class="mode" data-game="rush" aria-pressed="false"><b>Rush</b><span>60 seconds. Loops add time</span></button>
         <button class="mode" data-game="daily" aria-pressed="false"><b>Daily Sector</b><span id="dailyNote">Today's board is ready</span></button>
+        <button class="mode" data-game="surge" aria-pressed="false"><b>Surge</b><span>Rows push up. Don't hit the top</span></button>
+        <button class="mode" data-game="corrupt" aria-pressed="false"><b>Corruption</b><span>Static spreads. Link beside it</span></button>
       </div>
       <div class="btns">
         <button class="btn primary" id="mContinue" hidden>Continue</button>
@@ -296,6 +299,8 @@ td.rk{color:var(--dim);width:2em;}
         <button class="tab" data-hgame="classic" aria-label="Classic Blocks">Blocks</button>
         <button class="tab" data-hgame="rush" >Rush</button>
         <button class="tab" data-hgame="daily" aria-label="Daily Sector">Daily</button>
+        <button class="tab" data-hgame="surge" >Surge</button>
+        <button class="tab" data-hgame="corrupt" aria-label="Corruption">Static</button>
       </div>
       <div class="how" data-how="link">
         <b>01</b><span>Drag pieces from the tray onto the grid. Every square has its own color. Full rows don't clear in this mode.</span>
@@ -330,6 +335,18 @@ td.rk{color:var(--dim);width:2em;}
         <b>02</b><span>Plays by Link's rules. There are no items, shop or undo, so every score is earned the same way.</span>
         <b>03</b><span>You get one try. You can leave and come back to finish it, but you can't restart.</span>
         <b>04</b><span>A new board unlocks at midnight. Play every day to build a streak.</span>
+      </div>
+      <div class="how" data-how="surge" hidden>
+        <b>01</b><span>No pieces. Squares sit at the bottom and gravity is always on. Link matching colors to clear them.</span>
+        <b>02</b><span>Every few links a new row pushes up from below. The count at the bottom shows how many links you have left before the next one.</span>
+        <b>03</b><span>The longer you last, the more often rows arrive. If you have no links left, the next row comes early.</span>
+        <b>04</b><span>The game ends when a row pushes up while any column is already full. The top glows red when you're close.</span>
+      </div>
+      <div class="how" data-how="corrupt" hidden>
+        <b>01</b><span>Plays like Link, but the board has static: dead squares that can't be linked or used.</span>
+        <b>02</b><span>Every 3 moves the static spreads to a neighboring square, eating colors first. The count at the bottom shows when.</span>
+        <b>03</b><span>Make a link that runs right beside static squares to purge them, for +40 each.</span>
+        <b>04</b><span>The Block destroyer removes one static square. A Color wipe on static clears all of it.</span>
       </div>
       <div class="how" data-how="classic" hidden>
         <b>01</b><span>Drag pieces from the tray onto the grid.</span>
@@ -413,6 +430,8 @@ td.rk{color:var(--dim);width:2em;}
         <button class="tab" data-rgame="classic" aria-selected="true" aria-label="Classic Blocks">Blocks</button>
         <button class="tab" data-rgame="rush" aria-selected="false" >Rush</button>
         <button class="tab" data-rgame="daily" aria-selected="false" aria-label="Daily Sector">Daily</button>
+        <button class="tab" data-rgame="surge" aria-selected="false" >Surge</button>
+        <button class="tab" data-rgame="corrupt" aria-selected="false" aria-label="Corruption">Static</button>
       </div>
       <div class="tabs" role="tablist">
         <button class="tab" role="tab" id="tBoard" aria-selected="true">Top 10</button>
@@ -448,12 +467,14 @@ let wallet = Object.assign({credits:0, destroy:0, wipe:0, shuffle:0}, store.get(
 const saveWallet = () => store.set('wallet', wallet);
 // two modes, each with its own saved run, stats and top 10 (classic keeps the original storage keys)
 // modes: Link (main), Gravity (Link with squares that always fall), Classic
-const MODES = ['link', 'gravity', 'dots', 'classic', 'rush', 'daily'];
-const MODE_NAMES = {link:'Link', gravity:'Gravity', dots:'Classic Dots', classic:'Classic Blocks', rush:'Rush', daily:'Daily Sector'};
+const MODES = ['link', 'gravity', 'dots', 'classic', 'rush', 'daily', 'surge', 'corrupt'];
+const MODE_NAMES = {link:'Link', gravity:'Gravity', dots:'Classic Dots', classic:'Classic Blocks', rush:'Rush', daily:'Daily Sector', surge:'Surge', corrupt:'Corruption'};
+const noPieces = m => isDots(m) || m === 'surge';                    // modes without a piece tray
+const STATIC = 9, STATIC_COL = '#5c6573';                            // Corruption: dead squares that can't be linked
 const isDots = m => m === 'dots' || m === 'rush';                     // full board, dots drop in, no pieces
 const RUSH_MS = 60000, RUSH_LOOP_MS = 3000;                         // Rush: 60 s clock, loops add 3 s
-const isLink = m => m === 'link' || m === 'gravity' || m === 'daily' || isDots(m);   // modes that clear by linking colors
-const hasShop = m => m === 'link' || m === 'gravity' || isDots(m);   // Daily has no items, so every board is equal   // modes with credits, items and the shop
+const isLink = m => m === 'link' || m === 'gravity' || m === 'daily' || m === 'surge' || m === 'corrupt' || isDots(m);   // modes that clear by linking colors
+const hasShop = m => m === 'link' || m === 'gravity' || m === 'surge' || m === 'corrupt' || isDots(m);   // Daily has no items, so every board is equal   // modes with credits, items and the shop
 let game = MODES.includes(settings.game) ? settings.game : 'link';
 const key = (k, g = game) => g === 'classic' ? k : k + '.' + g;
 const emptyStats = () => ({games:0, best:0, total:0, lines:0, bestChain:0, bestMulti:0, placed:0, undos:0, dots:0, bestLink:0, loops:0});
@@ -505,7 +526,7 @@ const ITEMS = {
 // tray entries: classic = shape index; link = {si, c:[color per square]}
 const tsi = e => e == null ? null : (typeof e === 'number' ? e : e.si);
 const pieceVal = (e, k) => typeof e === 'number' ? SHAPES[e].col + 1 : e.c[k] + 1;   // board value of square k
-const colOf = v => (S && isLink(S.mode) ? LINK_COLORS : COLORS)[v - 1];
+const colOf = v => v === STATIC ? STATIC_COL : (S && isLink(S.mode) ? LINK_COLORS : COLORS)[v - 1];
 
 /* ======================= run state ======================= */
 let S = null;          // current run (plain JSON so it snapshots cleanly)
@@ -553,8 +574,11 @@ function freshRun(){
        dots:0, bestLink:0, loops:0};
   if (game === 'daily'){ S.day = today(); S.rng = daySeed(S.day); }
   if (isDots(game)){ S.tray = [null, null, null]; fillDots(); }
+  if (game === 'surge'){ S.tray = [null, null, null]; S.surgeIn = 4; S.surges = 0; S.links = 0;
+    do { S.board.fill(0); for (let y = N - 3; y < N; y++) for (let x = 0; x < N; x++) S.board[y*N + x] = randomDot(); } while (!hasLinkMove()); }
+  if (game === 'corrupt'){ S.spreadIn = 3; S.purged = 0; seedStatic(); seedStatic(); }
   if (game === 'rush') S.timeLeft = RUSH_MS;
-  else S.tray = dealTray();
+  if (!noPieces(game)) S.tray = dealTray();
   history = [];
 }
 // Classic Dots: a full board of random dots that always has at least one match
@@ -618,7 +642,7 @@ function setGame(g){
 // Link mode: is there any pair of touching squares with the same color?
 function hasLinkMove(b = S.board){
   for (let y=0;y<N;y++) for (let x=0;x<N;x++){
-    const v = b[y*N+x]; if (!v) continue;
+    const v = b[y*N+x]; if (!v || v === STATIC) continue;
     if (x < N-1 && b[y*N+x+1] === v) return true;
     if (y < N-1 && b[(y+1)*N+x] === v) return true;
   }
@@ -633,6 +657,8 @@ function recordRun(){
   let entry;
   if (isLink(S.mode)){
     stats.dots += S.dots; stats.bestLink = Math.max(stats.bestLink, S.bestLink); stats.loops += S.loops;
+    if (S.mode === 'surge') stats.bestSurges = Math.max(stats.bestSurges || 0, S.surges || 0);
+    if (S.mode === 'corrupt') stats.purged = (stats.purged || 0) + (S.purged || 0);
     entry = {score:S.score, dots:S.dots, link:S.bestLink, loops:S.loops, date:Date.now(), id:S.started};
   } else {
     stats.lines += S.lines; stats.undos += S.undos;
@@ -725,6 +751,7 @@ const Snd = {
       case 'unlink': this.tone({type:'triangle', f:H(57), d:.08, g:.04}); break;
       case 'loop': [62,69,74,78].forEach((m,i)=>this.tone({type:'sawtooth', f:H(m), t:i*.03, d:.7, g:.045, cut:2400, verb:.8})); this.tone({type:'sine', f:110, f2:55, d:.5, g:.3}); break;
       case 'streak': { const base = 62 + Math.min(12, (n - 2) * 2); [0, 4, 7, 12, 16].slice(0, Math.min(5, n + 1)).forEach((d, i) => this.tone({type:'sawtooth', f:H(base + d), t:.18 + i*.06, d:.5, g:.05, cut:3200, verb:.8})); this.tone({type:'sine', f:80, f2:35, d:.7, g:.4}); break; }
+      case 'static': this.noise({d:.25, g:.12, type:'bandpass', f:1800, f2:600, q:6}); this.tone({type:'square', f:70, f2:50, d:.2, g:.08, cut:400}); break;
       case 'drop': [0,1,2].forEach(i => this.tone({type:'sine', f:120 - i*20, f2:45, t:.12 + i*.07, d:.18, g:.28})); this.noise({d:.35, g:.07, f:900, f2:200, q:1}); break;
       case 'tick': this.tone({type:'square', f:H(81), d:.04, g:.025, cut:2500}); break;
       case 'deal': [0,1,2].forEach(i=>this.tone({type:'square', f:H(81+i*2), t:i*.06, d:.05, g:.03, cut:3000})); break;
@@ -794,7 +821,7 @@ function layout(){
   const padL = parseFloat(cs.paddingLeft), padR = parseFloat(cs.paddingRight);
   const top = hudB + 14, bottom = railT - 10, avail = bottom - top;
   const maxW = W - padL - padR;
-  const noTray = S && isDots(S.mode);   // Classic Dots has no pieces, so the board gets the room
+  const noTray = S && noPieces(S.mode);   // Classic Dots has no pieces, so the board gets the room
   let bs = Math.min(maxW, noTray ? avail : avail / 1.40, 540);
   const cell = Math.floor(bs / N); bs = cell * N;
   const trayCell = Math.floor(cell * .5);
@@ -819,6 +846,19 @@ function tile(ci, s, kind='solid'){
   const g = c.getContext('2d'); g.scale(DPR, DPR); g.translate(m, m);
   const ins = Math.max(1, s * .045), w = s - 2*ins, ch = s * .2;
   // angular hull plate: top-left and bottom-right corners chamfered
+  if (kind === 'static'){
+    // Corruption: a dead plate full of signal noise
+    const ins = Math.max(1, s * .045), w = s - 2*ins, ch = s * .2, R = seeded(7);
+    g.beginPath(); g.moveTo(ins + ch, ins); g.lineTo(ins + w, ins); g.lineTo(ins + w, ins + w - ch); g.lineTo(ins + w - ch, ins + w); g.lineTo(ins, ins + w); g.lineTo(ins, ins + ch); g.closePath();
+    g.fillStyle = '#12151b'; g.fill(); g.save(); g.clip();
+    for (let yy = ins; yy < ins + w; yy += Math.max(2, s * .06)){
+      const r = R(); g.fillStyle = r < .12 ? 'rgba(255,63,164,.55)' : r < .24 ? 'rgba(41,230,255,.45)' : `rgba(200,210,225,${(.08 + R() * .22).toFixed(2)})`;
+      const ox = R() * w * .4; g.fillRect(ins + ox, yy, w * (.3 + R() * .7), Math.max(1, s * .035));
+    }
+    g.restore();
+    g.lineWidth = Math.max(1, s * .03); g.strokeStyle = 'rgba(160,170,185,.55)'; g.setLineDash([s*.12, s*.06]); g.stroke(); g.setLineDash([]);
+    t = {c, m}; tileCache.set(k, t); return t;
+  }
   const hull = (o = 0) => { g.beginPath(); g.moveTo(ins + ch + o, ins + o); g.lineTo(ins + w - o, ins + o); g.lineTo(ins + w - o, ins + w - ch - o);
     g.lineTo(ins + w - ch - o, ins + w - o); g.lineTo(ins + o, ins + w - o); g.lineTo(ins + o, ins + ch + o); g.closePath(); };
   if (kind === 'ghost'){
@@ -861,6 +901,7 @@ function tile(ci, s, kind='solid'){
   t = {c, m}; tileCache.set(k, t); return t;
 }
 function drawTile(g, ci, x, y, s, kind, alpha=1, scale=1){
+  if (ci === STATIC_COL && kind !== 'ghost') kind = 'static';
   if (kind === 'solid' && S && isLink(S.mode)) kind = 'node';
   const t = tile(ci, Math.round(s), kind);
   const full = (Math.round(s) + 2*t.m) * scale;
@@ -990,8 +1031,62 @@ function clearFx(){ pops = []; clears = []; parts = []; floaters = []; banner = 
 let drag = null, fitCache = [true, true, true];
 function refreshFits(){ fitCache = S.tray.map(e => e != null && fitsAnywhere(tsi(e))); }
 // the run is over when no piece fits (and, in Link mode, no link can be made)
+/* ---- Surge: a new row pushes up from the bottom every few links ---- */
+let pushTimer = null;
+const surgeEvery = () => S.links >= 60 ? 2 : S.links >= 25 ? 3 : 4;   // speeds up the longer you last
+function queueSurge(delay){
+  if (pushTimer) return;
+  pushTimer = setTimeout(() => { pushTimer = null; if (S && S.mode === 'surge' && !S.over) pushRow(performance.now()); }, delay);
+}
+function pushRow(now){
+  S.surgeIn = surgeEvery();
+  if (S.board.slice(0, N).some(Boolean)){   // a full column has nowhere to go
+    S.over = true; overAt = now + 500; shake = {t:now, mag:10}; Snd.play('fail'); buzz([80, 40, 80]); saveRun(); hud(); return;
+  }
+  const moves = [], nb = Array(N*N).fill(0);
+  for (let i = N; i < N*N; i++) if (S.board[i]){ nb[i - N] = S.board[i]; moves.push({from:i, to:i - N, v:S.board[i]}); }
+  for (let x = 0; x < N; x++){
+    let v = randomDot(); if (x > 0 && nb[(N-1)*N + x - 1] === v && rnd() < .3) v = randomDot();
+    nb[(N-1)*N + x] = v; moves.push({fx:x, fy:N, to:(N-1)*N + x, v});
+  }
+  S.board = nb; S.surges++; pops = [];
+  shuffleAnim = {t:now, moves, rise:true, dur:420};
+  Snd.play('drop'); buzz([20, 30, 20]);
+  floaters.push({x:L.bx + L.bs/2, y:L.by + L.bs - L.cell*.5, text:'SURGE', t:now, col:'#ff5a4e', big:true});
+  refreshFits(); checkOver(now + 450, 700); saveRun(); hud();
+}
+
+/* ---- Corruption: static squares spread every few moves ---- */
+function seedStatic(){
+  const spots = []; for (let i = 0; i < N*N; i++) if (S.board[i] !== STATIC) spots.push(i);
+  if (spots.length) S.board[spots[Math.floor(rnd() * spots.length)]] = STATIC;
+}
+function spreadStatic(now){
+  const statics = []; for (let i = 0; i < N*N; i++) if (S.board[i] === STATIC) statics.push(i);
+  if (!statics.length){ seedStatic(); return; }
+  const options = [];
+  for (const i of statics){ const x = i % N, y = (i / N) | 0;
+    for (const j of [x > 0 ? i-1 : -1, x < N-1 ? i+1 : -1, y > 0 ? i-N : -1, y < N-1 ? i+N : -1]) if (j >= 0 && S.board[j] !== STATIC) options.push(j); }
+  if (!options.length) return;
+  // prefer eating a colored square over an empty one
+  const colored = options.filter(j => S.board[j]);
+  const pool = colored.length && rnd() < .7 ? colored : options;
+  const c = pool[Math.floor(rnd() * pool.length)];
+  S.board[c] = STATIC; pops.push({i:c, t:now});
+  Snd.play('static'); buzz(15);
+}
+// counts a move: spreads static or pushes a surge row when it's due
+function pressureStep(now, delay){
+  if (S.mode === 'corrupt' && --S.spreadIn <= 0){ S.spreadIn = 3; setTimeout(() => { if (S && S.mode === 'corrupt' && !S.over){ spreadStatic(performance.now()); refreshFits(); checkOver(performance.now(), 600); saveRun(); hud(); } }, delay); }
+  if (S.mode === 'surge' && --S.surgeIn <= 0) queueSurge(delay);
+}
+
 function checkOver(now, delay){
   S.stuck = false;
+  if (S.mode === 'surge'){   // no links left: the floor rises early; it only ends when a row can't fit
+    if (!hasLinkMove() && !pushTimer) queueSurge(900);
+    return syncHint();
+  }
   if (isDots(S.mode)) return syncHint();   // Classic Dots is endless: the board reshuffles instead of ending
   if (fitCache.some(Boolean)) return syncHint();
   if (isLink(S.mode) && hasLinkMove()) return syncHint();
@@ -1049,6 +1144,7 @@ function place(slot, gx, gy){
   }
   addScore(gained);
   settle(now, 40);
+  pressureStep(now, 450);
   S.tray[slot] = refillPiece(slot); dealAt[slot] = now + 140; setTimeout(() => Snd.play('tick'), 140);
   refreshFits();
   checkOver(now, n ? 900 : 550);
@@ -1111,8 +1207,12 @@ function resolveLink(){
   const now = performance.now();
   const set = new Set(uniq);
   if (loop) for (let i=0;i<N*N;i++) if (S.board[i] === v) set.add(i);
+  let purgedStatic = 0;
+  for (const i of uniq){ const x = i % N, y = (i / N) | 0;
+    for (const j of [x > 0 ? i-1 : -1, x < N-1 ? i+1 : -1, y > 0 ? i-N : -1, y < N-1 ? i+N : -1])
+      if (j >= 0 && S.board[j] === STATIC && !set.has(j)){ set.add(j); purgedStatic++; } }
   const n = uniq.length;
-  const colorsBefore = new Set(S.board.filter(Boolean));
+  const colorsBefore = new Set(S.board.filter(x => x && x !== STATIC));
   const dots = isDots(S.mode);
   let pts = dots ? 10 * set.size : 10 * n * (n - 1);   // Classic Dots: 10 points a dot
   const col = colOf(v);
@@ -1132,6 +1232,7 @@ function resolveLink(){
   else if (n >= 10) bonuses.push(['Mega link', BONUS.mega]); else if (n >= 8) bonuses.push(['Long link', BONUS.long8]); else if (n >= 6) bonuses.push(['Long link', BONUS.long6]);
   if (!dots && colorsBefore.has(v) && !S.board.includes(v)) bonuses.push([`${LINK_NAMES[v-1]} cleared`, BONUS.color + (loop ? 25 * (set.size - n) : 0)]);
   if (!dots && loop && set.size >= 12) bonuses.push(['Overload', BONUS.overload]);
+  if (purgedStatic){ bonuses.push(['Static purged', 40 * purgedStatic]); S.purged = (S.purged || 0) + purgedStatic; }
   const purge = !dots && S.board.every(x => !x);
   if (purge) bonuses.push(['Sector purged', BONUS.purge]);
   for (const b of bonuses) pts += b[1];
@@ -1153,6 +1254,8 @@ function resolveLink(){
   settle(now, Math.min(900, 340 + n * 40));
   if (dots && loop && S.mode === 'rush'){ S.timeLeft += RUSH_LOOP_MS; floaters.push({x:fx, y:fy + L.cell * .7, text:'+3s', t:now + 150, col:'#ffb22e'}); }
   if (dots){ settleDots(now, Math.min(700, 300 + n * 30), 0); }
+  if (S.mode === 'surge') S.links++;
+  pressureStep(now, Math.min(1300, 900 + n * 40));
   refreshFits();
   checkOver(now, 700);
   saveRun(); hud();
@@ -1195,6 +1298,7 @@ function applyTarget(c){
   snapshot();
   wallet[k]--; saveWallet(); setTarget(null);
   const set = k === 'wipe' ? S.board.map((x, i) => x === v ? i : -1).filter(i => i >= 0) : [c];
+  if (v === STATIC) S.purged = (S.purged || 0) + set.length;
   const now = performance.now(), col = colOf(v), cx = c % N, cy = (c / N) | 0;
   for (const i of set){
     const x = i % N, y = (i / N) | 0;
@@ -1203,7 +1307,7 @@ function applyTarget(c){
     S.board[i] = 0;
   }
   S.used = (S.used || 0) + 1;
-  if (k === 'wipe') banner = {t:now, col, text:'Color wipe', sub:`${set.length} ${LINK_NAMES[v-1]} squares cleared`};
+  if (k === 'wipe') banner = {t:now, col, text:'Color wipe', sub:`${set.length} ${v === STATIC ? 'static' : LINK_NAMES[v-1]} squares cleared`};
   if (!reduceMotion) shake = {t:now, mag: k === 'wipe' ? 7 : 4};
   Snd.play(k === 'wipe' ? 'loop' : 'fail'); Snd.play('clear', k === 'wipe' ? 3 : 1, 0); buzz(k === 'wipe' ? [25, 40, 35] : 30);
   afterItem(now);
@@ -1277,7 +1381,7 @@ if (!native2 && 'DeviceMotionEvent' in window){
 /* ---- Gravity mode: squares always fall to the bottom of their column ---- */
 // applies the fall to the board now; the animation starts after `delay` ms so clears can play first
 function settle(now, delay){
-  if (S.mode !== 'gravity') return;
+  if (S.mode !== 'gravity' && S.mode !== 'surge') return;
   const moves = dropMoves(); if (!moves.length) return;
   const nb = S.board.slice(); for (const m of moves) nb[m.from] = 0; for (const m of moves) nb[m.to] = m.v;
   S.board = nb; pops = [];
@@ -1302,7 +1406,7 @@ function undo(){
   S.undos = undos; S.stuck = false; setTarget(null);
   if (S.mode === 'rush') S.timeLeft = clock;   // undo can't buy back time
   // board and score rewind, but the tray is re-dealt with fresh random pieces
-  S.rng = (Math.random() * 2**32) >>> 0; if (!isDots(S.mode)) S.tray = dealTray();
+  S.rng = (Math.random() * 2**32) >>> 0; if (!noPieces(S.mode)) S.tray = dealTray();
   clearFx(); drag = null; overAt = 0; rewind = performance.now();
   const t0 = performance.now(); dealAt = [t0 + 120, t0 + 190, t0 + 260];
   refreshFits(); saveRun(); hud();
@@ -1322,15 +1426,17 @@ function hud(){
   if (!S) return;
   $('#best').textContent = fmt(Math.max(stats.best, S.score));
   const lk = hasShop(S.mode), dots = isDots(S.mode), daily = S.mode === 'daily', rush = S.mode === 'rush';
+  const press = S.mode === 'surge' || S.mode === 'corrupt';
   // undo appears in every mode except Daily when it's turned on in Settings
   const u = $('#btnUndo'); u.hidden = !settings.undo || daily; u.classList.toggle('compact', lk);
   u.disabled = !history.length; $('#undoCount').textContent = history.length;
   $('#items').hidden = !lk; $('#btnShop').hidden = !lk;
-  $('#linesStat').hidden = lk && !rush; $('#btnMute').hidden = lk;
+  $('#linesStat').hidden = lk && !rush && !press; $('#btnMute').hidden = lk;
   $('#chain').style.visibility = lk || dots || daily ? 'hidden' : '';
-  $('#linesStat .label').textContent = rush ? 'Time' : dots ? 'Dots cleared' : daily ? 'Cleared' : 'Lines';
+  $('#linesStat .label').textContent = S.mode === 'surge' ? 'Surge in' : S.mode === 'corrupt' ? 'Spread in' : rush ? 'Time' : dots ? 'Dots cleared' : daily ? 'Cleared' : 'Lines';
   $('#linesVal').classList.toggle('big', dots || daily);
   if (rush){ tickRush.shown = null; const sec = Math.ceil(S.timeLeft / 1000); $('#linesVal').textContent = sec + 's'; $('#linesVal').classList.toggle('low', sec <= 10); }
+  else if (press){ const n = S.mode === 'surge' ? S.surgeIn : S.spreadIn; $('#linesVal').textContent = n; $('#linesVal').classList.add('big'); $('#linesVal').classList.toggle('low', n <= 1); }
   else { $('#linesVal').classList.remove('low'); if (dots || daily) $('#linesVal').textContent = fmt(S.dots); }
   if (daily) return;
   if (lk){
@@ -1378,7 +1484,7 @@ stage.addEventListener('pointerdown', e => {
     // Shake to drop shortcut: remember where a touch starts so a fast downward swipe can trigger a drop
     swipe = settings.shake ? {x:p.x, y:p.y, t:performance.now(), id:e.pointerId} : null;
     const c = cellAt(p, false);
-    if (c < 0 || !S.board[c]){ if (swipe){ e.preventDefault(); try{ stage.setPointerCapture(e.pointerId); }catch(_){} } return; }
+    if (c < 0 || !S.board[c] || S.board[c] === STATIC){ if (swipe){ e.preventDefault(); try{ stage.setPointerCapture(e.pointerId); }catch(_){} } return; }
     e.preventDefault();
     link = {path:[c], v:S.board[c], loop:false, id:e.pointerId, px:p.x, py:p.y};
     try{ stage.setPointerCapture(e.pointerId); }catch(_){}
@@ -1479,8 +1585,8 @@ function render(now){
         const fx = m.fx ?? m.from % N, fy = m.fy ?? ((m.from / N) | 0), tx = m.to % N, ty = (m.to / N) | 0;
         // drop: squares fall with gravity and settle with a small bounce, staggered from the bottom up
         const kk = shuffleAnim.drop ? Math.max(0, Math.min(1, (k * (shuffleAnim.dur) - (m.delay || 0)) / (shuffleAnim.dur - 160))) : k;
-        const e = shuffleAnim.drop ? bounceOut(kk) : (k < .5 ? 4*k*k*k : 1 - Math.pow(-2*k + 2, 3)/2);
-        drawTile(g, colOf(m.v), bx + (fx + (tx - fx)*e)*cell, by + (fy + (ty - fy)*e)*cell, cell, 'solid', 1, shuffleAnim.drop ? 1 : 1 - Math.sin(k*Math.PI)*.25);
+        const e = shuffleAnim.drop ? bounceOut(kk) : shuffleAnim.rise ? 1 - Math.pow(1 - k, 3) : (k < .5 ? 4*k*k*k : 1 - Math.pow(-2*k + 2, 3)/2);
+        drawTile(g, colOf(m.v), bx + (fx + (tx - fx)*e)*cell, by + (fy + (ty - fy)*e)*cell, cell, 'solid', 1, shuffleAnim.drop || shuffleAnim.rise ? 1 : 1 - Math.sin(k*Math.PI)*.25);
       }
       g.restore(); }
   }
@@ -1493,6 +1599,7 @@ function render(now){
     if (lit.has(i)) drawTile(g, colOf(previewLines.col + 1), x, y, cell, 'solid', .75 + .25*Math.sin(now/90), sc);
     else if (link && (inLink.has(i) || (link.loop && v === link.v))) drawTile(g, colOf(v), x, y, cell, 'nodeLit', link.loop ? .8 + .2*Math.sin(now/70) : 1, inLink.has(i) ? 1.06 : 1);
     else if (target) drawTile(g, colOf(v), x, y, cell, 'nodeLit', .75 + .25*Math.sin(now/120 + i), sc);
+    else if (v === STATIC) drawTile(g, STATIC_COL, x + (!reduceMotion && Math.sin(now/37 + i*7) > .96 ? (i % 2 ? 2 : -2) : 0), y, cell, 'static', (dead ? .35 : .7 + .3*Math.abs(Math.sin(now/300 + i))), sc);
     else drawTile(g, colOf(v), x, y, cell, 'solid', dead ? .35 : (link && v !== link.v ? .45 : 1), sc);
   }
   pops = pops.filter(p => now - p.t < 300);
@@ -1560,6 +1667,12 @@ function render(now){
   // dragged piece on top
   if (dg){ drawPiece(g, drag.si, dg.x, dg.y, dg.s, 'solid', dg.ok ? 1 : .85); }
 
+  if (S.mode === 'surge'){
+    let tall = 0; for (let x = 0; x < N; x++){ let h = 0; for (let y = 0; y < N; y++) if (S.board[y*N + x]){ h = N - y; break; } tall = Math.max(tall, h); }
+    if (tall >= N - 2){ const a = (tall >= N ? .32 : tall >= N - 1 ? .22 : .12) * (.7 + .3*Math.sin(now/160));
+      const gr = g.createLinearGradient(0, by, 0, by + cell * 2.5); gr.addColorStop(0, `rgba(255,70,60,${a})`); gr.addColorStop(1, 'rgba(255,70,60,0)');
+      g.fillStyle = gr; g.fillRect(bx, by, bs, cell * 2.5); }
+  }
   // loop streak: board flash, expanding shockwave rings and the big ×N stamp
   if (flash){ const k = (now - flash.t) / 420; if (k >= 1) flash = null; else { g.fillStyle = hexA(flash.col, flash.a * (1 - k)); g.fillRect(bx, by, bs, bs); } }
   for (const r of rings){
@@ -1668,7 +1781,7 @@ function show(m){
   syncToggles(); hud();
 }
 function gameOver(manual){
-  $('#oWhy').textContent = manual ? 'You ended the game' : S.mode === 'rush' ? "Time's up" : 'No moves left';
+  $('#oWhy').textContent = manual ? 'You ended the game' : S.mode === 'rush' ? "Time's up" : S.mode === 'surge' ? 'The stack hit the top' : 'No moves left';
   const daily = S.mode === 'daily';
   $('#oNew').hidden = daily; $('#oDaily').hidden = !daily;
   const fresh = S.score > stats.best && S.score > 0, lk = isLink(S.mode);
@@ -1680,11 +1793,12 @@ function gameOver(manual){
   if (daily){ recordRun(); $('#oDaily').textContent = `Today's board is done. A new one unlocks tomorrow.`; }
   $('#oUndo').hidden = !settings.undo || !history.length || daily;
   // Link: items (or enough credits to buy one) can rescue a stuck board
-  $('#oItem').hidden = manual || isDots(S.mode) || !(hasShop(S.mode) && (settings.dev || wallet.credits >= ITEMS.shuffle.price));
+  $('#oItem').hidden = manual || isDots(S.mode) || S.mode === 'surge' || !(hasShop(S.mode) && (settings.dev || wallet.credits >= ITEMS.shuffle.price));
   $('#oItem').textContent = 'Buy an item to keep going';
   show('over'); Snd.play(fresh ? 'record' : 'over'); buzz([60, 50, 120]);
 }
 function startNew(){
+  clearTimeout(pushTimer); pushTimer = null;
   if (S && S.score > 0) recordRun();
   freshRun(); layout(); shownScore = 0; $('#score').textContent = '0';
   clearFx(); drag = null; link = null; returning = null; overAt = 0; tileCache.clear(); { const t0 = performance.now(); dealAt = [t0 + 150, t0 + 220, t0 + 290]; }
@@ -1816,7 +1930,7 @@ function renderRecords(){
     </tbody></table></div>` : `<div class="empty">No finished ${MODE_NAMES[game]} games yet. Your 10 best scores will show here.</div>`;
   const avg = stats.games ? Math.round(stats.total / stats.games) : 0;
   const items = lk
-    ? [['Games', stats.games], ['Best', fmt(stats.best)], ['Average', fmt(avg)], ['Squares cleared', fmt(stats.dots)], ['Longest link', stats.bestLink], ['Loops', fmt(stats.loops)], game === 'dots' ? ['Length', 'Endless'] : game === 'rush' ? ['Clock', '60s + 3s a loop'] : game === 'daily' ? ['Days in a row', stats.dayStreak || 0] : ['Pieces placed', fmt(stats.placed)], hasShop(game) ? ['Credits', fmt(wallet.credits)] : game === 'daily' ? ['Best streak', stats.bestDayStreak || 0] : ['Mode', MODE_NAMES[game]]]
+    ? [['Games', stats.games], ['Best', fmt(stats.best)], ['Average', fmt(avg)], ['Squares cleared', fmt(stats.dots)], ['Longest link', stats.bestLink], ['Loops', fmt(stats.loops)], game === 'dots' ? ['Length', 'Endless'] : game === 'rush' ? ['Clock', '60s + 3s a loop'] : game === 'daily' ? ['Days in a row', stats.dayStreak || 0] : game === 'surge' ? ['Best rows survived', stats.bestSurges || 0] : game === 'corrupt' ? ['Static purged', fmt(stats.purged || 0)] : ['Pieces placed', fmt(stats.placed)], hasShop(game) ? ['Credits', fmt(wallet.credits)] : game === 'daily' ? ['Best streak', stats.bestDayStreak || 0] : ['Mode', MODE_NAMES[game]]]
     : [['Games', stats.games], ['Best', fmt(stats.best)], ['Average', fmt(avg)], ['Lines', fmt(stats.lines)], ['Best chain', stats.bestChain], ['Most lines at once', stats.bestMulti || 0], ['Pieces placed', fmt(stats.placed)], ['Undos', fmt(stats.undos)]];
   $('#rStats').innerHTML = `<div class="statgrid">${items.map(([k, v]) => `<div><span>${k}</span><span>${v}</span></div>`).join('')}</div>`;
 }
@@ -1915,7 +2029,7 @@ window.sector8Save = () => saveRun();
 
 // test hook
 window.sector8 = { get S(){ return S; }, get history(){ return history; }, place, undo, startNew, SHAPES, fits, L:() => L, show, get mode(){ return mode; },
-  setGame, hasLinkMove, today, daySeed, get rngState(){ return S && S.rng; }, refreshFits, get game(){ return game; }, get link(){ return link; },
+  setGame, hasLinkMove, pushRow, spreadStatic, STATIC, today, daySeed, get rngState(){ return S && S.rng; }, refreshFits, get game(){ return game; }, get link(){ return link; },
   get wallet(){ return wallet; }, settings, settleDots, get fx(){ return {rings: rings.length, stamp: stamp && stamp.text, flash: !!flash}; }, onShake, dropMoves, BONUS, ITEMS, buy, useShuffle, setTarget, get target(){ return target; }, setSetting };
 })();
 </script>
