@@ -3,7 +3,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <style>*,*::before,*::after{box-sizing:border-box}body{margin:0}[hidden]{display:none!important}</style>
-</head><body>
 <title>Sector 8</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#04060c">
@@ -144,11 +143,28 @@ td.rk{color:var(--dim);width:2em;}
 .statgrid span:last-child{font:400 16px/1 var(--f-num);color:var(--ink);}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 
+/* mode picker */
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.mode{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:12px 12px 11px;text-align:left;cursor:pointer;color:var(--dim);
+  border:1px solid rgba(125,147,173,.25);background:transparent;font-family:var(--f-ui);
+  clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);}
+.mode b{font:400 13px/1 var(--f-display);letter-spacing:.12em;color:var(--ink);text-transform:uppercase;}
+.mode span{font-size:12px;line-height:1.35;}
+.mode[aria-pressed="true"]{border-color:rgba(255,178,46,.7);background:rgba(255,178,46,.08);color:#e9d6b8;}
+.mode[aria-pressed="true"] b{color:var(--amber);text-shadow:0 0 10px rgba(255,178,46,.5);}
+#modeTag{display:flex;flex-direction:column;gap:5px;justify-content:center;height:52px;padding-left:14px;border-left:2px solid rgba(255,178,46,.7);}
+#modeTag b{font:400 13px/1 var(--f-display);letter-spacing:.14em;color:var(--amber);}
+#modeTag span{font-size:12px;color:var(--dim);}
+#rMode{display:flex;gap:6px;}
+#rMode .tab{flex:1;}
+
 #toast{position:absolute;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:12;pointer-events:none;
   font:600 12px/1 var(--f-ui);letter-spacing:.24em;text-transform:uppercase;color:var(--ink);background:rgba(8,14,28,.9);border:1px solid var(--line);padding:10px 14px;opacity:0;transition:opacity .25s;white-space:nowrap;}
 #toast.show{opacity:1;}
 @media (prefers-reduced-motion: reduce){ .kanji{animation:none} .overlay{animation:none} }
 </style>
+</head><body>
+
 
 <div id="app">
   <canvas id="bg" aria-hidden="true"></canvas>
@@ -170,7 +186,8 @@ td.rk{color:var(--dim);width:2em;}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
       <span>Undo</span><span id="undoCount">0</span>
     </button>
-    <div class="railstat"><span class="label">Lines</span><span id="linesVal">0</span></div>
+    <div id="modeTag" hidden><b>LINK</b><span>Connect matching colors</span></div>
+    <div class="railstat"><span class="label" id="linesLabel">Lines</span><span id="linesVal">0</span></div>
     <button id="btnMute" class="icon-btn" aria-label="Sound on" aria-pressed="true"></button>
   </footer>
 
@@ -182,17 +199,27 @@ td.rk{color:var(--dim);width:2em;}
         <div class="logo">SECTOR&nbsp;8</div>
         <div class="tag">Neon block puzzle</div>
       </div>
+      <div class="modes" role="group" aria-label="Game mode">
+        <button class="mode" data-game="classic" aria-pressed="true"><b>Classic</b><span>Fill rows and columns. Unlimited undo.</span></button>
+        <button class="mode" data-game="link" aria-pressed="false"><b>Link</b><span>Connect matching colors to clear. No undo.</span></button>
+      </div>
       <div class="btns">
         <button class="btn primary" id="mContinue" hidden>Continue run</button>
         <button class="btn" id="mNew">New run</button>
         <button class="btn" id="mRecords">Records</button>
       </div>
       <div class="toggles" data-toggles></div>
-      <div class="how">
+      <div class="how" data-how="classic">
         <b>01</b><span>Drag pieces from the tray onto the 8×8 grid.</span>
         <b>02</b><span>Fill a row or column to clear it. Clear several at once to multiply points.</span>
         <b>03</b><span>Each used slot refills right away. Keep clearing within 3 moves to build a chain bonus.</span>
         <b>04</b><span>Undo any move, as often as you like. Undo deals you a fresh set of pieces.</span>
+      </div>
+      <div class="how" data-how="link" hidden>
+        <b>01</b><span>Drag pieces onto the grid. Every square carries its own color. Full rows do not clear.</span>
+        <b>02</b><span>Drag across neighboring squares of one color, up, down or sideways, to link them. Let go to clear the link.</span>
+        <b>03</b><span>Close a link back on itself into a loop to clear every square of that color on the board.</span>
+        <b>04</b><span>There is no undo. The run ends when no piece fits and no two matching squares touch.</span>
       </div>
     </div></div>
   </section>
@@ -219,9 +246,9 @@ td.rk{color:var(--dim);width:2em;}
       <div id="oRecord" class="record" hidden>New record</div>
       <div class="bigscore" id="oScore">0</div>
       <div class="kv">
-        <div><span class="label">Lines</span><span id="oLines">0</span></div>
-        <div><span class="label">Best chain</span><span id="oChain">0</span></div>
-        <div><span class="label">Undos</span><span id="oUndos">0</span></div>
+        <div><span class="label" id="oL1">Lines</span><span id="oLines">0</span></div>
+        <div><span class="label" id="oL2">Best chain</span><span id="oChain">0</span></div>
+        <div><span class="label" id="oL3">Undos</span><span id="oUndos">0</span></div>
       </div>
       <div class="btns">
         <button class="btn pink" id="oUndo">Undo last move</button>
@@ -236,6 +263,10 @@ td.rk{color:var(--dim);width:2em;}
     <div class="frame"><div class="panel">
       <div class="eyebrow">Stored on this device</div>
       <h2>Records</h2>
+      <div id="rMode" role="group" aria-label="Records for mode">
+        <button class="tab" data-rgame="classic" aria-selected="true">Classic</button>
+        <button class="tab" data-rgame="link" aria-selected="false">Link</button>
+      </div>
       <div class="tabs" role="tablist">
         <button class="tab" role="tab" id="tBoard" aria-selected="true">Top 10</button>
         <button class="tab" role="tab" id="tStats" aria-selected="false">Stats</button>
@@ -263,10 +294,13 @@ const store = {
   set(k, v){ try{ localStorage.setItem('sector8.'+k, JSON.stringify(v)); return true; }catch(e){ return false; } },
   del(k){ try{ localStorage.removeItem('sector8.'+k); }catch(e){} }
 };
-const settings = Object.assign({music:true, sfx:true, haptics:true}, store.get('settings', {}));
-const emptyStats = () => ({games:0, best:0, total:0, lines:0, bestChain:0, bestMulti:0, placed:0, undos:0});
-let stats = Object.assign(emptyStats(), store.get('stats', {}));
-let board10 = store.get('top', []);
+const settings = Object.assign({music:true, sfx:true, haptics:true, game:'classic'}, store.get('settings', {}));
+// two modes, each with its own saved run, stats and top 10 (classic keeps the original storage keys)
+let game = settings.game === 'link' ? 'link' : 'classic';
+const key = (k, g = game) => g === 'link' ? k + '.link' : k;
+const emptyStats = () => ({games:0, best:0, total:0, lines:0, bestChain:0, bestMulti:0, placed:0, undos:0, dots:0, bestLink:0, loops:0});
+let stats = Object.assign(emptyStats(), store.get(key('stats'), {}));
+let board10 = store.get(key('top'), []);
 
 /* ======================= pieces ======================= */
 // muted dystopia: sodium amber, oxidized teal, rust, gunmetal, copper, verdigris, concrete, burnt orange
@@ -300,6 +334,13 @@ for (const f of FAMILIES){
   }
 }
 const TOTAL_W = SHAPES.reduce((a,s)=>a+s.weight,0);
+// Link mode palette: five signal colors that stay apart in the dark
+const LINK_COLORS = ['#d6922f','#3fa3b3','#b84a3e','#8470bf','#c9c2a8'];
+const LINK_NAMES = ['amber','teal','rust','violet','bone'];
+// tray entries: classic = shape index; link = {si, c:[color per square]}
+const tsi = e => e == null ? null : (typeof e === 'number' ? e : e.si);
+const pieceVal = (e, k) => typeof e === 'number' ? SHAPES[e].col + 1 : e.c[k] + 1;   // board value of square k
+const colOf = v => (S && S.mode === 'link' ? LINK_COLORS : COLORS)[v - 1];
 
 /* ======================= run state ======================= */
 let S = null;          // current run (plain JSON so it snapshots cleanly)
@@ -313,6 +354,11 @@ function rnd(){ // mulberry32, state lives in the run so undo replays the same f
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
 function pickShape(){ let r = rnd()*TOTAL_W; for (let i=0;i<SHAPES.length;i++){ r -= SHAPES[i].weight; if (r <= 0) return i; } return 0; }
+function pickPiece(){
+  const si = pickShape();
+  if (S.mode !== 'link') return si;
+  return {si, c: SHAPES[si].cells.map(() => Math.floor(rnd() * LINK_COLORS.length))};
+}
 function fits(si, gx, gy, b = S.board){
   const sh = SHAPES[si]; if (gx < 0 || gy < 0 || gx + sh.w > N || gy + sh.h > N) return false;
   for (const [x,y] of sh.cells) if (b[(gy+y)*N + gx+x]) return false;
@@ -321,30 +367,51 @@ function fits(si, gx, gy, b = S.board){
 function fitsAnywhere(si, b = S.board){ for (let y=0;y<N;y++) for (let x=0;x<N;x++) if (fits(si,x,y,b)) return true; return false; }
 function dealTray(){
   for (let a = 0; a < 4; a++){
-    const t = [pickShape(), pickShape(), pickShape()];
-    if (a === 3 || t.some(si => fitsAnywhere(si))) return t;
+    const t = [pickPiece(), pickPiece(), pickPiece()];
+    if (a === 3 || t.some(e => fitsAnywhere(tsi(e)))) return t;
   }
 }
 // a used slot refills at once; only lean toward a fitting piece when nothing else in the tray fits
 function refillPiece(slot){
-  const othersFit = S.tray.some((v, i) => i !== slot && v != null && fitsAnywhere(v));
-  if (othersFit) return pickShape();
-  for (let a = 0; a < 4; a++){ const si = pickShape(); if (a === 3 || fitsAnywhere(si)) return si; }
+  const othersFit = S.tray.some((v, i) => i !== slot && v != null && fitsAnywhere(tsi(v)));
+  if (othersFit) return pickPiece();
+  for (let a = 0; a < 4; a++){ const e = pickPiece(); if (a === 3 || fitsAnywhere(tsi(e))) return e; }
 }
 function freshRun(){
-  S = {v:1, board:Array(N*N).fill(0), tray:[null,null,null], score:0, rng:(Math.random()*2**32)>>>0,
-       streak:0, miss:0, lines:0, placed:0, maxStreak:0, bestMulti:0, undos:0, over:false, started:Date.now()};
+  S = {v:1, mode:game, board:Array(N*N).fill(0), tray:[null,null,null], score:0, rng:(Math.random()*2**32)>>>0,
+       streak:0, miss:0, lines:0, placed:0, maxStreak:0, bestMulti:0, undos:0, over:false, started:Date.now(),
+       dots:0, bestLink:0, loops:0};
   S.tray = dealTray(); history = [];
 }
 function saveRun(){
-  if (!S) { store.del('run'); return; }
-  if (!store.set('run', {S, history})){ // storage full: keep the newest snapshots
-    store.set('run', {S, history: history.slice(-400)});
+  if (!S) { store.del(key('run')); return; }
+  const k = key('run', S.mode || 'classic');
+  if (!store.set(k, {S, history})){ // storage full: keep the newest snapshots
+    store.set(k, {S, history: history.slice(-400)});
   }
 }
 function loadRun(){
-  const r = store.get('run', null);
-  if (r && r.S && Array.isArray(r.S.board) && r.S.board.length === N*N){ S = r.S; history = r.history || []; return true; }
+  S = null; history = [];
+  const r = store.get(key('run'), null);
+  if (r && r.S && Array.isArray(r.S.board) && r.S.board.length === N*N){ S = r.S; S.mode = S.mode || 'classic'; history = r.history || []; return true; }
+  return false;
+}
+// switch the selected mode: loads that mode's saved run, stats and top 10
+function setGame(g){
+  if (S) saveRun();
+  game = g; settings.game = g; store.set('settings', settings);
+  stats = Object.assign(emptyStats(), store.get(key('stats'), {}));
+  board10 = store.get(key('top'), []);
+  lastRecordedId = null;
+  if (loadRun()){ shownScore = S.score; refreshFits(); }
+}
+// Link mode: is there any pair of touching squares with the same color?
+function hasLinkMove(b = S.board){
+  for (let y=0;y<N;y++) for (let x=0;x<N;x++){
+    const v = b[y*N+x]; if (!v) continue;
+    if (x < N-1 && b[y*N+x+1] === v) return true;
+    if (y < N-1 && b[(y+1)*N+x] === v) return true;
+  }
   return false;
 }
 
@@ -352,11 +419,18 @@ function loadRun(){
 function recordRun(){
   if (!S || S.score <= 0 || S.recorded) return null;
   S.recorded = true;
-  stats.games++; stats.total += S.score; stats.lines += S.lines; stats.placed += S.placed; stats.undos += S.undos;
-  stats.best = Math.max(stats.best, S.score); stats.bestChain = Math.max(stats.bestChain, S.maxStreak); stats.bestMulti = Math.max(stats.bestMulti, S.bestMulti);
-  const entry = {score:S.score, lines:S.lines, chain:S.maxStreak, undos:S.undos, date:Date.now(), id:S.started};
+  stats.games++; stats.total += S.score; stats.placed += S.placed; stats.best = Math.max(stats.best, S.score);
+  let entry;
+  if (S.mode === 'link'){
+    stats.dots += S.dots; stats.bestLink = Math.max(stats.bestLink, S.bestLink); stats.loops += S.loops;
+    entry = {score:S.score, dots:S.dots, link:S.bestLink, loops:S.loops, date:Date.now(), id:S.started};
+  } else {
+    stats.lines += S.lines; stats.undos += S.undos;
+    stats.bestChain = Math.max(stats.bestChain, S.maxStreak); stats.bestMulti = Math.max(stats.bestMulti, S.bestMulti);
+    entry = {score:S.score, lines:S.lines, chain:S.maxStreak, undos:S.undos, date:Date.now(), id:S.started};
+  }
   board10.push(entry); board10.sort((a,b)=>b.score-a.score); board10 = board10.slice(0,10);
-  store.set('stats', stats); store.set('top', board10);
+  store.set(key('stats', S.mode), stats); store.set(key('top', S.mode), board10);
   lastRecordedId = entry.id;
   return entry;
 }
@@ -430,7 +504,10 @@ const Snd = {
       case 'undo':
         this.tone({type:'sawtooth', f:900, f2:180, d:.26, g:.08, cut:2200, q:6});
         this.noise({d:.22, g:.08, f:3000, f2:300, q:2}); break;
-      case 'tick': this.tone({type:'square', f:H(81), d:.04, g:.025, cut:2500}); break;
+      case 'link': { const sc = [62,65,67,69,72,74,77,79,81,84,86,89,91,93]; this.tone({type:'triangle', f:H(sc[Math.min(n - 1, sc.length - 1)]), d:.22, g:.07, verb:.35}); this.tone({type:'sine', f:H(sc[Math.min(n - 1, sc.length - 1)] + 12), d:.12, g:.025}); break; }
+      case 'unlink': this.tone({type:'triangle', f:H(57), d:.08, g:.04}); break;
+      case 'loop': [62,69,74,78].forEach((m,i)=>this.tone({type:'sawtooth', f:H(m), t:i*.03, d:.7, g:.045, cut:2400, verb:.8})); this.tone({type:'sine', f:110, f2:55, d:.5, g:.3}); break;
+      case 'tick':this.tone({type:'square', f:H(81), d:.04, g:.025, cut:2500}); break;
       case 'deal': [0,1,2].forEach(i=>this.tone({type:'square', f:H(81+i*2), t:i*.06, d:.05, g:.03, cut:3000})); break;
       case 'over': [57,53,50,45].forEach((m,i)=>{ this.tone({type:'sawtooth', f:H(m), t:i*.28, d:1.1, g:.07, cut:900, verb:.7}); this.tone({type:'sawtooth', f:H(m)*1.006, t:i*.28, d:1.1, g:.06, cut:900}); }); break;
       case 'record': [69,73,76,81,85].forEach((m,i)=>this.tone({type:'triangle', f:H(m), t:i*.09, d:.6, g:.07, verb:.6})); break;
@@ -551,10 +628,19 @@ function tile(ci, s, kind='solid'){
     g.beginPath(); g.moveTo(ins + ch + s*.04, ins + s*.06); g.lineTo(ins + w - s*.06, ins + s*.06); g.stroke();
     g.shadowColor = color; g.shadowBlur = s * .1; g.fillStyle = color;
     g.fillRect(ins + w - ch - s*.2, ins + w - s*.14, s*.16, Math.max(1, s*.04)); g.shadowBlur = 0;
+    if (kind === 'node' || kind === 'nodeLit'){
+      // Link mode: a lit junction node in the middle of each square
+      const r = s * (kind === 'nodeLit' ? .17 : .12), c0 = s / 2;
+      g.shadowColor = color; g.shadowBlur = s * (kind === 'nodeLit' ? .45 : .22);
+      g.fillStyle = color; g.beginPath(); g.moveTo(c0, c0 - r); g.lineTo(c0 + r, c0); g.lineTo(c0, c0 + r); g.lineTo(c0 - r, c0); g.closePath(); g.fill();
+      g.shadowBlur = 0; g.fillStyle = 'rgba(255,245,225,.55)'; const r2 = r * .4;
+      g.beginPath(); g.moveTo(c0, c0 - r2); g.lineTo(c0 + r2, c0); g.lineTo(c0, c0 + r2); g.lineTo(c0 - r2, c0); g.closePath(); g.fill();
+    }
   }
   t = {c, m}; tileCache.set(k, t); return t;
 }
 function drawTile(g, ci, x, y, s, kind, alpha=1, scale=1){
+  if (kind === 'solid' && S && S.mode === 'link') kind = 'node';
   const t = tile(ci, Math.round(s), kind);
   const full = (Math.round(s) + 2*t.m) * scale;
   const cx = x + s/2, cy = y + s/2;
@@ -680,7 +766,13 @@ function clearFx(){ pops = []; clears = []; parts = []; floaters = []; banner = 
 
 /* ======================= gameplay ======================= */
 let drag = null, fitCache = [true, true, true];
-function refreshFits(){ fitCache = S.tray.map(si => si != null && fitsAnywhere(si)); }
+function refreshFits(){ fitCache = S.tray.map(e => e != null && fitsAnywhere(tsi(e))); }
+// the run is over when no piece fits (and, in Link mode, no link can be made)
+function checkOver(now, delay){
+  if (fitCache.some(Boolean)) return;
+  if (S.mode === 'link' && hasLinkMove()) return;
+  S.over = true; overAt = now + delay;
+}
 
 function linesFor(b){
   const rows = [], cols = [];
@@ -690,13 +782,15 @@ function linesFor(b){
 }
 
 function place(slot, gx, gy){
-  const si = S.tray[slot]; if (si == null || !fits(si, gx, gy)) return false;
-  history.push(JSON.stringify(S));
+  const e = S.tray[slot], si = tsi(e); if (si == null || !fits(si, gx, gy)) return false;
+  const lk = S.mode === 'link';
+  if (!lk) history.push(JSON.stringify(S));   // Link mode has no undo
   const sh = SHAPES[si], now = performance.now();
-  for (const [x,y] of sh.cells){ const i = (gy+y)*N + gx+x; S.board[i] = sh.col + 1; pops.push({i, t:now + (x+y)*18}); }
+  sh.cells.forEach(([x,y], k) => { const i = (gy+y)*N + gx+x; S.board[i] = pieceVal(e, k); pops.push({i, t:now + (x+y)*18}); });
   S.tray[slot] = null; S.placed++;
   let gained = sh.cells.length;
-  const {rows, cols} = linesFor(S.board), n = rows.length + cols.length;
+  // Link mode: placing never clears; only links do
+  const {rows, cols} = lk ? {rows:[], cols:[]} : linesFor(S.board), n = rows.length + cols.length;
   const cx = L.bx + (gx + sh.w/2)*L.cell, cy = L.by + (gy + sh.h/2)*L.cell;
   if (n){
     const set = new Set();
@@ -708,8 +802,8 @@ function place(slot, gx, gy){
     gained += pts;
     for (const i of set){
       const x = i % N, y = Math.floor(i / N), d = Math.hypot(x - (gx + sh.w/2 - .5), y - (gy + sh.h/2 - .5));
-      clears.push({x, y, ci:S.board[i] - 1, t:now, delay:d*28});
-      burst(L.bx + (x+.5)*L.cell, L.by + (y+.5)*L.cell, COLORS[S.board[i] - 1], reduceMotion ? 1 : 3);
+      clears.push({x, y, ci:colOf(S.board[i]), t:now, delay:d*28});
+      burst(L.bx + (x+.5)*L.cell, L.by + (y+.5)*L.cell, colOf(S.board[i]), reduceMotion ? 1 : 3);
       S.board[i] = 0;
     }
     const names = ['', '', 'Double', 'Triple', 'Quad', 'Overload'];
@@ -723,20 +817,93 @@ function place(slot, gx, gy){
     buzz(n >= 2 ? [25, 40, 35] : 22);
     floaters.push({x:cx, y:cy, text:'+' + gained, t:now, col:n >= 2 ? '#ff3fa4' : '#29e6ff', big:true});
   } else {
-    S.miss++; if (S.miss >= 3){ S.streak = 0; S.miss = 0; }
+    if (!lk){ S.miss++; if (S.miss >= 3){ S.streak = 0; S.miss = 0; } }
     Snd.play('place', S.placed); buzz(8);
     floaters.push({x:cx, y:cy, text:'+' + gained, t:now, col:'#bfefff'});
   }
   S.score += gained;
   S.tray[slot] = refillPiece(slot); dealAt[slot] = now + 140; setTimeout(() => Snd.play('tick'), 140);
   refreshFits();
-  if (!fitCache.some(Boolean)){ S.over = true; overAt = now + (n ? 900 : 550); }
+  checkOver(now, n ? 900 : 550);
   saveRun(); hud();
   return true;
 }
 
+/* ---- Link mode: connect matching colors ---- */
+let link = null;   // {path:[cell indexes], v:board value, loop:bool, id, px, py}
+const adj = (a, b) => { const ax = a % N, ay = (a / N) | 0, bx2 = b % N, by2 = (b / N) | 0; return Math.abs(ax - bx2) + Math.abs(ay - by2) === 1; };
+function cellAt(p, strict){
+  const fx = (p.x - L.bx) / L.cell, fy = (p.y - L.by) / L.cell;
+  const x = Math.floor(fx), y = Math.floor(fy);
+  if (x < 0 || y < 0 || x >= N || y >= N) return -1;
+  // while dragging, require the finger near the square's middle so diagonal slips don't register
+  if (strict && Math.hypot(fx - x - .5, fy - y - .5) > .42) return -1;
+  return y*N + x;
+}
+function linkStep(c){
+  const P = link.path, last = P[P.length - 1];
+  if (c === last) return;
+  if (P.length >= 2 && c === P[P.length - 2]){            // backtrack
+    P.pop(); link.loop = false; Snd.play('unlink'); buzz(3); return;
+  }
+  if (link.loop || !adj(c, last) || S.board[c] !== link.v) return;
+  if (P.includes(c)){                                      // closing a loop
+    if (P.length >= 4){ P.push(c); link.loop = true; Snd.play('loop'); buzz([15, 20, 25]); }
+    return;
+  }
+  P.push(c); Snd.play('link', P.length); buzz(5);
+}
+function linkTo(c){
+  // walk one square at a time toward the finger so fast swipes don't skip squares
+  for (let guard = 0; guard < 16 && link; guard++){
+    const last = link.path[link.path.length - 1]; if (c === last) return;
+    const lx = last % N, ly = (last / N) | 0, cx2 = c % N, cy2 = (c / N) | 0;
+    const dx = cx2 - lx, dy = cy2 - ly;
+    const nx = Math.abs(dx) >= Math.abs(dy) ? lx + Math.sign(dx) : lx, ny = Math.abs(dx) >= Math.abs(dy) ? ly : ly + Math.sign(dy);
+    const before = link.path.length, wasLoop = link.loop;
+    linkStep(ny*N + nx);
+    if (link.path.length === before && link.loop === wasLoop) return;   // blocked
+  }
+}
+function resolveLink(){
+  const P = link.path, v = link.v, loop = link.loop; link = null;
+  const uniq = [...new Set(P)];
+  if (uniq.length < 2) return;
+  const now = performance.now();
+  const set = new Set(uniq);
+  if (loop) for (let i=0;i<N*N;i++) if (S.board[i] === v) set.add(i);
+  const n = uniq.length;
+  let pts = 10 * n * (n - 1);
+  if (loop) pts += 25 * (set.size - n) + 150;
+  const col = colOf(v);
+  let mx = 0, my = 0;
+  for (const i of set){
+    const x = i % N, y = (i / N) | 0, order = uniq.indexOf(i);
+    const delay = order >= 0 ? order * 40 : n * 40 + 60 + Math.random() * 120;
+    clears.push({x, y, ci:col, t:now, delay});
+    burst(L.bx + (x+.5)*L.cell, L.by + (y+.5)*L.cell, col, reduceMotion ? 1 : 3);
+    S.board[i] = 0; mx += x; my += y;
+  }
+  mx /= set.size; my /= set.size;
+  S.dots += set.size; S.bestLink = Math.max(S.bestLink, n); if (loop) S.loops++;
+  const purge = S.board.every(x => !x);
+  if (purge) pts += 500;
+  S.score += pts;
+  if (loop || purge || n >= 6){
+    banner = {t:now, col, text: purge ? 'Sector purged' : loop ? 'Loop' : 'Long link',
+      sub: loop ? `all ${LINK_NAMES[v-1]} cleared · ${set.size} squares` : `${n} squares` + (purge ? '  +500' : '')};
+  }
+  if ((loop || n >= 6) && !reduceMotion) shake = {t:now, mag:Math.min(9, 3 + set.size * .3)};
+  Snd.play('clear', Math.min(4, Math.ceil(n / 2)), Math.min(4, n - 2)); if (purge) Snd.play('purge');
+  buzz(loop ? [25, 40, 35] : 18);
+  floaters.push({x:L.bx + (mx + .5)*L.cell, y:L.by + (my + .5)*L.cell, text:'+' + pts, t:now, col, big:true});
+  refreshFits();
+  checkOver(now, 700);
+  saveRun(); hud();
+}
+
 function undo(){
-  if (!history.length) return;
+  if (!S || S.mode === 'link' || !history.length) return;
   const undos = S.undos + 1;
   S = JSON.parse(history.pop()); S.undos = undos;
   // board and score rewind, but the tray is re-dealt with fresh random pieces
@@ -759,7 +926,12 @@ let shownScore = 0;
 function hud(){
   if (!S) return;
   $('#best').textContent = fmt(Math.max(stats.best, S.score));
-  $('#linesVal').textContent = S.lines;
+  const lk = S.mode === 'link';
+  $('#btnUndo').hidden = lk; $('#modeTag').hidden = !lk;
+  $('#chain').style.visibility = lk ? 'hidden' : '';
+  $('#linesLabel').textContent = lk ? 'Cleared' : 'Lines';
+  $('#linesVal').textContent = lk ? S.dots : S.lines;
+  if (lk) return;
   $('#undoCount').textContent = history.length;
   $('#btnUndo').disabled = !history.length;
   const on = S.streak > 0;
@@ -776,7 +948,7 @@ function slotAt(p){
   const i = Math.floor((p.x - L.tx) / L.slotW); return i >= 0 && i < 3 ? i : -1;
 }
 function dragGeom(d, now){
-  const sh = SHAPES[d.si], k = Math.min(1, (now - d.t0) / 110), e = 1 - Math.pow(1 - k, 3);
+  const sh = SHAPES[tsi(d.si)], k = Math.min(1, (now - d.t0) / 110), e = 1 - Math.pow(1 - k, 3);
   const s = L.trayCell + (L.cell - L.trayCell) * e;
   const pw = sh.w * s, ph = sh.h * s;
   const lift = d.touch ? L.cell * 1.1 : 0;
@@ -784,19 +956,33 @@ function dragGeom(d, now){
   // snapping uses the full-size footprint
   const fx = d.x - sh.w*L.cell/2, fy = d.touch ? d.y - sh.h*L.cell - lift : d.y - sh.h*L.cell/2;
   const gx = Math.round((fx - L.bx) / L.cell), gy = Math.round((fy - L.by) / L.cell);
-  return {x, y, s, gx, gy, ok: fits(d.si, gx, gy)};
+  return {x, y, s, gx, gy, ok: fits(tsi(d.si), gx, gy)};
 }
 stage.addEventListener('pointerdown', e => {
-  if (mode !== 'play' || !S || S.over || drag) return;
+  if (mode !== 'play' || !S || S.over || drag || link) return;
   const p = pt(e), i = slotAt(p);
-  if (i < 0 || S.tray[i] == null) return;
+  if (i < 0 || S.tray[i] == null){
+    // Link mode: touching a square on the board starts a link
+    if (S.mode !== 'link') return;
+    const c = cellAt(p, false); if (c < 0 || !S.board[c]) return;
+    e.preventDefault();
+    link = {path:[c], v:S.board[c], loop:false, id:e.pointerId, px:p.x, py:p.y};
+    try{ stage.setPointerCapture(e.pointerId); }catch(_){}
+    Snd.play('link', 1); buzz(4);
+    return;
+  }
   e.preventDefault();
   drag = {slot:i, si:S.tray[i], x:p.x, y:p.y, t0:performance.now(), touch:e.pointerType !== 'mouse', id:e.pointerId};
   try{ stage.setPointerCapture(e.pointerId); }catch(_){}
   Snd.play('pick'); buzz(4);
 });
-stage.addEventListener('pointermove', e => { if (!drag || e.pointerId !== drag.id) return; const p = pt(e); drag.x = p.x; drag.y = p.y; });
+stage.addEventListener('pointermove', e => {
+  const p = pt(e);
+  if (link && e.pointerId === link.id){ link.px = p.x; link.py = p.y; const c = cellAt(p, true); if (c >= 0) linkTo(c); return; }
+  if (!drag || e.pointerId !== drag.id) return; drag.x = p.x; drag.y = p.y;
+});
 function endDrag(e, cancel){
+  if (link && (!e || e.pointerId === link.id)){ if (cancel) link = null; else resolveLink(); return; }
   if (!drag || (e && e.pointerId !== drag.id)) return;
   const d = drag; drag = null;
   const g = dragGeom(d, performance.now() + 1000);
@@ -808,7 +994,7 @@ function endDrag(e, cancel){
 let returning = null;
 stage.addEventListener('pointerup', e => endDrag(e, false));
 stage.addEventListener('pointercancel', e => endDrag(e, true));
-stage.addEventListener('lostpointercapture', e => { if (drag && e.pointerId === drag.id) endDrag(e, false); });
+stage.addEventListener('lostpointercapture', e => { if ((drag && e.pointerId === drag.id) || (link && e.pointerId === link.id)) endDrag(e, false); });
 window.addEventListener('keydown', e => {
   if ((e.key === 'z' && (e.ctrlKey || e.metaKey)) || (e.key === 'u' && mode === 'play')){ e.preventDefault(); if (mode === 'play' || mode === 'over') undo(); }
   if (e.key === 'Escape'){ if (mode === 'play') show('pause'); else if (mode === 'pause') show('play'); }
@@ -816,15 +1002,16 @@ window.addEventListener('keydown', e => {
 
 /* ======================= render ======================= */
 function trayPiecePos(slot, si, now){
-  const sh = SHAPES[si], s = L.trayCell;
+  const sh = SHAPES[tsi(si)], s = L.trayCell;
   let x = L.tx + slot*L.slotW + (L.slotW - sh.w*s)/2, y = L.ty + (L.th - sh.h*s)/2;
   let a = 1;
   const d0 = dealAt[slot];
   if (d0 && now - d0 < 300){ const k = Math.max(0, Math.min(1, (now - d0) / 260)); const e = 1 - Math.pow(1 - k, 3); y += (1 - e) * L.cell*1.2; a = e; }
   return {x, y, s, a};
 }
-function drawPiece(g, si, x, y, s, kind='solid', alpha=1){
-  const sh = SHAPES[si]; for (const [cx, cy] of sh.cells) drawTile(g, sh.col, x + cx*s, y + cy*s, s, kind, alpha);
+function drawPiece(g, e, x, y, s, kind='solid', alpha=1){
+  const sh = SHAPES[tsi(e)];
+  sh.cells.forEach(([cx, cy], k) => drawTile(g, colOf(pieceVal(e, k)), x + cx*s, y + cy*s, s, kind, alpha));
 }
 function easeOutBack(k){ const c = 1.7; return 1 + (c+1)*Math.pow(k-1, 3) + c*Math.pow(k-1, 2); }
 
@@ -841,8 +1028,8 @@ function render(now){
   let dg = null, previewLines = null;
   if (drag){
     dg = dragGeom(drag, now);
-    if (dg.ok){
-      const b = S.board.slice(), sh = SHAPES[drag.si];
+    if (dg.ok && S.mode !== 'link'){
+      const b = S.board.slice(), sh = SHAPES[tsi(drag.si)];
       for (const [x,y] of sh.cells) b[(dg.gy+y)*N + dg.gx+x] = sh.col + 1;
       const ln = linesFor(b); if (ln.rows.length || ln.cols.length) previewLines = {ln, col:sh.col};
     }
@@ -852,21 +1039,35 @@ function render(now){
 
   // placed tiles
   const dead = S.over && overAt && now > overAt;
+  const inLink = link ? new Set(link.path) : null;
   for (let i=0;i<N*N;i++){
     const v = S.board[i]; if (!v) continue;
     const x = bx + (i % N)*cell, y = by + Math.floor(i / N)*cell;
     let sc = 1; const p = pops.find(p => p.i === i);
     if (p){ const k = (now - p.t) / 260; if (k < 0) sc = .6; else if (k < 1) sc = .6 + .4*easeOutBack(k); }
-    if (lit.has(i)) drawTile(g, previewLines.col, x, y, cell, 'solid', .75 + .25*Math.sin(now/90), sc);
-    else drawTile(g, v - 1, x, y, cell, 'solid', dead ? .35 : 1, sc);
+    if (lit.has(i)) drawTile(g, colOf(previewLines.col + 1), x, y, cell, 'solid', .75 + .25*Math.sin(now/90), sc);
+    else if (link && (inLink.has(i) || (link.loop && v === link.v))) drawTile(g, colOf(v), x, y, cell, 'nodeLit', link.loop ? .8 + .2*Math.sin(now/70) : 1, inLink.has(i) ? 1.06 : 1);
+    else drawTile(g, colOf(v), x, y, cell, 'solid', dead ? .35 : (link && v !== link.v ? .45 : 1), sc);
   }
   pops = pops.filter(p => now - p.t < 300);
+  // the link itself: a lit conduit between square centers, rubber-banding to the finger
+  if (link){
+    const col = colOf(link.v), P = link.path, cxy = i => [bx + (i % N + .5)*cell, by + (((i / N) | 0) + .5)*cell];
+    g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
+    g.beginPath(); P.forEach((i, k) => { const [x, y] = cxy(i); k ? g.lineTo(x, y) : g.moveTo(x, y); });
+    if (!link.loop){ const lx = Math.max(bx, Math.min(bx + bs, link.px)), ly = Math.max(by, Math.min(by + bs, link.py)); g.lineTo(lx, ly); }
+    g.strokeStyle = hexA(col, .35); g.lineWidth = cell * .3; g.shadowColor = col; g.shadowBlur = cell * .4; g.stroke();
+    g.shadowBlur = 0; g.strokeStyle = col; g.lineWidth = cell * .1; g.stroke();
+    g.strokeStyle = 'rgba(255,245,225,.7)'; g.lineWidth = Math.max(1, cell * .03); g.stroke();
+    g.restore();
+    if (link.loop){ g.fillStyle = hexA(col, .06 + .04*Math.sin(now/70)); g.fillRect(bx, by, bs, bs); }
+  }
   if (previewLines){
     g.fillStyle = hexA(COLORS[previewLines.col], .08 + .05*Math.sin(now/90));
     previewLines.ln.rows.forEach(y => g.fillRect(bx, by + y*cell, bs, cell));
     previewLines.ln.cols.forEach(x => g.fillRect(bx + x*cell, by, cell, bs));
   }
-  if (dg && dg.ok){ const sh = SHAPES[drag.si]; drawPiece(g, drag.si, bx + dg.gx*cell, by + dg.gy*cell, cell, 'ghost', 1); }
+  if (dg && dg.ok){ drawPiece(g, drag.si, bx + dg.gx*cell, by + dg.gy*cell, cell, 'ghost', 1); }
 
   // clearing tiles
   for (const c of clears){
@@ -956,7 +1157,7 @@ function render(now){
 let last = performance.now(), bgSkip = 0;
 function frame(now){
   const dt = Math.min(64, now - last); last = now;
-  if (mode === 'play' || mode === 'over' || drag) render(now);
+  if (mode === 'play' || mode === 'over' || drag || link) render(now);
   if (!reduceMotion || (bgSkip++ % 6 === 0)) drawBg(now, dt);
   requestAnimationFrame(frame);
 }
@@ -967,24 +1168,37 @@ let recordsReturn = 'menu';
 function show(m){
   mode = m;
   for (const [k, sel] of Object.entries(screens)) $(sel).hidden = k !== m;
-  if (m === 'menu'){ $('#mContinue').hidden = !(S && !S.over); }
-  if (m === 'records') renderRecords();
+  if (m === 'menu') syncMenu();
+  if (m === 'records'){ $('#rMode').hidden = recordsReturn !== 'menu'; renderRecords(); }
   syncToggles();
 }
 function gameOver(){
-  const fresh = S.score > stats.best && S.score > 0;
-  $('#oScore').textContent = fmt(S.score); $('#oLines').textContent = S.lines; $('#oChain').textContent = S.maxStreak; $('#oUndos').textContent = S.undos;
-  $('#oRecord').hidden = !fresh; $('#oUndo').hidden = !history.length;
+  const fresh = S.score > stats.best && S.score > 0, lk = S.mode === 'link';
+  $('#oScore').textContent = fmt(S.score);
+  $('#oL1').textContent = lk ? 'Cleared' : 'Lines';  $('#oLines').textContent = lk ? S.dots : S.lines;
+  $('#oL2').textContent = lk ? 'Longest link' : 'Best chain'; $('#oChain').textContent = lk ? S.bestLink : S.maxStreak;
+  $('#oL3').textContent = lk ? 'Loops' : 'Undos'; $('#oUndos').textContent = lk ? S.loops : S.undos;
+  $('#oRecord').hidden = !fresh; $('#oUndo').hidden = lk || !history.length;
   show('over'); Snd.play(fresh ? 'record' : 'over'); buzz([60, 50, 120]);
 }
 function startNew(){
   if (S && S.score > 0) recordRun();
   freshRun(); shownScore = 0; $('#score').textContent = '0';
-  clearFx(); drag = null; returning = null; overAt = 0; { const t0 = performance.now(); dealAt = [t0 + 150, t0 + 220, t0 + 290]; }
+  clearFx(); drag = null; link = null; returning = null; overAt = 0; tileCache.clear(); { const t0 = performance.now(); dealAt = [t0 + 150, t0 + 220, t0 + 290]; }
   refreshFits(); saveRun(); hud(); show('play');
   setTimeout(() => Snd.play('deal'), 150);
 }
-function finishToMenu(){ recordRun(); S = null; history = []; store.del('run'); show('menu'); }
+function finishToMenu(){ recordRun(); S = null; history = []; store.del(key('run')); show('menu'); }
+function syncMenu(){
+  $$('.mode').forEach(b => b.setAttribute('aria-pressed', b.dataset.game === game));
+  $$('[data-how]').forEach(h => h.hidden = h.dataset.how !== game);
+  $('#mContinue').hidden = !(S && !S.over);
+}
+$$('.mode').forEach(b => b.onclick = () => { if (b.dataset.game !== game){ setGame(b.dataset.game); syncMenu(); } });
+$$('#rMode .tab').forEach(b => b.onclick = () => {
+  if (b.dataset.rgame !== game){ setGame(b.dataset.rgame); }
+  renderRecords();
+});
 
 function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 1600); }
 
@@ -1019,7 +1233,7 @@ document.addEventListener('click', e => {
 $('#btnPause').onclick = () => { if (mode === 'play') show('pause'); };
 $('#btnUndo').onclick = () => undo();
 $('#btnMute').onclick = () => { const on = !(settings.sfx || settings.music); setSetting('sfx', on); setSetting('music', on); toast(on ? 'Sound on' : 'Sound muted'); };
-$('#mContinue').onclick = () => { shownScore = S.score; $('#score').textContent = fmt(S.score); refreshFits(); hud(); show('play'); };
+$('#mContinue').onclick = () => { shownScore = S.score; $('#score').textContent = fmt(S.score); tileCache.clear(); clearFx(); refreshFits(); hud(); show('play'); };
 let confirmNew = 0;
 $('#mNew').onclick = e => {
   if (S && !S.over && S.score > 0 && performance.now() - confirmNew > 2500){ confirmNew = performance.now(); e.target.textContent = 'Tap again to replace run'; setTimeout(() => e.target.textContent = 'New run', 2500); return; }
@@ -1044,16 +1258,21 @@ $('#tStats').onclick = () => { $('#tStats').setAttribute('aria-selected', 'true'
 let confirmReset = 0;
 $('#rReset').onclick = e => {
   if (performance.now() - confirmReset > 2500){ confirmReset = performance.now(); e.target.textContent = 'Tap to confirm'; setTimeout(() => e.target.textContent = 'Reset', 2500); return; }
-  e.target.textContent = 'Reset'; stats = emptyStats(); board10 = []; store.set('stats', stats); store.set('top', board10); renderRecords(); hud(); toast('Records cleared');
+  e.target.textContent = 'Reset'; stats = emptyStats(); board10 = []; store.set(key('stats'), stats); store.set(key('top'), board10); renderRecords(); hud(); toast(`${game === 'link' ? 'Link' : 'Classic'} records cleared`);
 };
 function renderRecords(){
   const d = t => new Date(t).toLocaleDateString(undefined, {month:'short', day:'numeric'});
+  const lk = game === 'link';
+  $$('#rMode .tab').forEach(b => b.setAttribute('aria-selected', b.dataset.rgame === game));
+  const cols = lk ? [['Cleared','dots'], ['Link','link'], ['Loops','loops']] : [['Lines','lines'], ['Chain','chain'], ['Undos','undos']];
   $('#rBoard').innerHTML = board10.length ? `<div style="overflow-x:auto"><table>
-    <thead><tr><th>#</th><th>Score</th><th>Lines</th><th>Chain</th><th>Undos</th><th>Date</th></tr></thead><tbody>
-    ${board10.map((r, i) => `<tr class="${r.id === lastRecordedId ? 'fresh' : (i === 0 ? 'top' : '')}"><td class="rk">${String(i+1).padStart(2,'0')}</td><td>${fmt(r.score)}</td><td>${r.lines}</td><td>${r.chain}</td><td>${r.undos}</td><td>${d(r.date)}</td></tr>`).join('')}
-    </tbody></table></div>` : `<div class="empty">No finished runs yet. Your best 10 will be listed here.</div>`;
+    <thead><tr><th>#</th><th>Score</th>${cols.map(c => `<th>${c[0]}</th>`).join('')}<th>Date</th></tr></thead><tbody>
+    ${board10.map((r, i) => `<tr class="${r.id === lastRecordedId ? 'fresh' : (i === 0 ? 'top' : '')}"><td class="rk">${String(i+1).padStart(2,'0')}</td><td>${fmt(r.score)}</td>${cols.map(c => `<td>${r[c[1]] ?? 0}</td>`).join('')}<td>${d(r.date)}</td></tr>`).join('')}
+    </tbody></table></div>` : `<div class="empty">No finished ${lk ? 'Link' : 'Classic'} runs yet. Your best 10 will be listed here.</div>`;
   const avg = stats.games ? Math.round(stats.total / stats.games) : 0;
-  const items = [['Runs', stats.games], ['Best', fmt(stats.best)], ['Average', fmt(avg)], ['Lines', fmt(stats.lines)], ['Best chain', stats.bestChain], ['Biggest clear', stats.bestMulti ? stats.bestMulti + ' lines' : '0'], ['Pieces', fmt(stats.placed)], ['Undos', fmt(stats.undos)]];
+  const items = lk
+    ? [['Runs', stats.games], ['Best', fmt(stats.best)], ['Average', fmt(avg)], ['Cleared', fmt(stats.dots)], ['Longest link', stats.bestLink], ['Loops', fmt(stats.loops)], ['Pieces', fmt(stats.placed)], ['Mode', 'Link']]
+    : [['Runs', stats.games], ['Best', fmt(stats.best)], ['Average', fmt(avg)], ['Lines', fmt(stats.lines)], ['Best chain', stats.bestChain], ['Biggest clear', stats.bestMulti ? stats.bestMulti + ' lines' : '0'], ['Pieces', fmt(stats.placed)], ['Undos', fmt(stats.undos)]];
   $('#rStats').innerHTML = `<div class="statgrid">${items.map(([k, v]) => `<div><span>${k}</span><span>${v}</span></div>`).join('')}</div>`;
 }
 
@@ -1084,7 +1303,8 @@ window.sector8Back = () => {
 window.sector8Save = () => saveRun();
 
 // test hook
-window.sector8 = { get S(){ return S; }, get history(){ return history; }, place, undo, startNew, SHAPES, fits, L:() => L, show, get mode(){ return mode; } };
+window.sector8 = { get S(){ return S; }, get history(){ return history; }, place, undo, startNew, SHAPES, fits, L:() => L, show, get mode(){ return mode; },
+  setGame, hasLinkMove, refreshFits, get game(){ return game; }, get link(){ return link; } };
 })();
 </script>
 

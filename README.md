@@ -2,7 +2,15 @@
 
 # Sector 8
 
-A moody, rain-soaked cyberpunk block puzzle for Android. Drag pieces onto an 8×8 grid and fill rows or columns to clear them.
+A moody, rain-soaked cyberpunk block puzzle for Android. Drag pieces onto an 8×8 grid. It has two modes, picked on the title screen.
+
+**Classic:** fill rows or columns to clear them.
+
+**Link:** every square of a piece has its own color, and full rows don't clear. Drag across neighboring squares of one color (up, down or sideways) to link them, and let go to clear the link. Close a link into a loop to clear every square of that color on the board. There is no undo. The run ends when no piece fits and no two matching squares touch.
+
+Each mode keeps its own saved run, stats and top 10.
+
+Classic mode features:
 
 - **Unlimited undo.** Each undo rewinds the board and score and deals you three fresh random pieces.
 - **Always three pieces.** A tray slot refills the moment you use it.
