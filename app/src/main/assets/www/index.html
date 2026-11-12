@@ -305,7 +305,7 @@ td.rk{color:var(--dim);width:2em;}
       <div class="how" data-how="dots" hidden>
         <b>01</b><span>The board starts full of colored squares (dots). There are no pieces to place.</span>
         <b>02</b><span>Drag across touching dots of one color (up, down or sideways) and let go to clear them. Each dot is worth 10 points.</span>
-        <b>03</b><span>Close a loop to clear every dot of that color. The new dots that drop in won't be that color.</span>
+        <b>03</b><span>Close a loop to clear every dot of that color.</span>
         <b>04</b><span>Cleared dots leave gaps, the dots above fall, and new dots drop in from the top.</span>
         <b>05</b><span>You earn credits and can use the same shop and items as Link. A destroyed or wiped square's gap fills from above.</span>
         <b>06</b><span>It's endless: if nothing can be linked, the board reshuffles. To finish and save your score, choose End game in the pause menu.</span>
@@ -527,9 +527,10 @@ function freshRun(){
 // Classic Dots: a full board of random dots that always has at least one match
 function randomDot(exclude){ let v; do { v = 1 + Math.floor(rnd() * LINK_COLORS.length); } while (v === exclude); return v; }
 function fillDots(){ do { for (let i=0;i<N*N;i++) S.board[i] = randomDot(); } while (!hasLinkMove()); }
-// after a link: dots above fall, new ones drop in from the top (a loop's color sits out the refill)
+// after a link: dots above fall, new ones drop in from the top
+const DOTS_SIDE_REROLL = .30;   // slight nudge against new side-by-side dots matching, so loops don't chain endlessly
 function settleDots(now, delay, exclude){
-  const moves = [], nb = Array(N*N).fill(0);
+  const moves = [], nb = Array(N*N).fill(0), gaps = [];
   for (let x = 0; x < N; x++){
     let to = N - 1;
     for (let y = N - 1; y >= 0; y--){
@@ -538,11 +539,15 @@ function settleDots(now, delay, exclude){
       if (y !== to) moves.push({from:y*N + x, to:to*N + x, v, delay:(N - 1 - to) * 18});
       to--;
     }
-    const gap = to + 1;   // rows 0..to are empty: drop new dots in from above
-    for (let r = 0; r < gap; r++){
-      const v = randomDot(exclude); nb[r*N + x] = v;
-      moves.push({fx:x, fy:r - gap, to:r*N + x, v, delay:(N - 1 - r) * 18 + 60});
-    }
+    gaps[x] = to + 1;   // rows 0..to are empty and get new dots
+  }
+  // new dots are generated row by row so each one can see the new dot to its left
+  for (let r = 0; r < N; r++) for (let x = 0; x < N; x++){
+    if (r >= gaps[x]) continue;
+    let v = randomDot(exclude);
+    if (x > 0 && r < gaps[x - 1] && nb[r*N + x - 1] === v && rnd() < DOTS_SIDE_REROLL) v = randomDot(exclude);
+    nb[r*N + x] = v;
+    moves.push({fx:x, fy:r - gaps[x], to:r*N + x, v, delay:(N - 1 - r) * 18 + 60});
   }
   S.board = nb; pops = [];
   if (moves.length) shuffleAnim = {t:now + delay, moves, drop:true, dur:640};
@@ -1085,7 +1090,7 @@ function resolveLink(){
   buzz(loop ? [25, 40, 35] : 18);
   floaters.push({x:L.bx + (mx + .5)*L.cell, y:L.by + (my + .5)*L.cell, text:'+' + pts, t:now, col, big:true});
   settle(now, Math.min(900, 340 + n * 40));
-  if (dots){ settleDots(now, Math.min(700, 300 + n * 30), loop ? v : 0); }
+  if (dots){ settleDots(now, Math.min(700, 300 + n * 30), 0); }
   refreshFits();
   checkOver(now, 700);
   saveRun(); hud();
@@ -1128,7 +1133,6 @@ function applyTarget(c){
   snapshot();
   wallet[k]--; saveWallet(); setTarget(null);
   const set = k === 'wipe' ? S.board.map((x, i) => x === v ? i : -1).filter(i => i >= 0) : [c];
-  wipedColor = k === 'wipe' ? v : 0;
   const now = performance.now(), col = colOf(v), cx = c % N, cy = (c / N) | 0;
   for (const i of set){
     const x = i % N, y = (i / N) | 0;
@@ -1142,7 +1146,7 @@ function applyTarget(c){
   Snd.play(k === 'wipe' ? 'loop' : 'fail'); Snd.play('clear', k === 'wipe' ? 3 : 1, 0); buzz(k === 'wipe' ? [25, 40, 35] : 30);
   afterItem(now);
 }
-let shuffleAnim = null, wipedColor = 0;  // {t, moves:[{from, to, v}]}
+let shuffleAnim = null;  // {t, moves:[{from, to, v}]}
 function useShuffle(){
   const filled = []; for (let i=0;i<N*N;i++) if (S.board[i]) filled.push(i);
   if (filled.length < 2){ toast('Nothing to shuffle yet'); return; }
@@ -1223,8 +1227,7 @@ function afterItem(now){
   if (S.board.every(x => !x)){ addScore(BONUS.purge); banner = {t:performance.now(), col:'#ffb22e', text:'Sector purged', sub:`+${BONUS.purge}`}; Snd.play('purge'); }
   S.over = false; overAt = 0;
   if (!shuffleAnim) settle(performance.now(), 360);
-  if (S.mode === 'dots' && S.board.some(v => !v)) settleDots(performance.now(), 380, wipedColor);
-  wipedColor = 0;
+  if (S.mode === 'dots' && S.board.some(v => !v)) settleDots(performance.now(), 380, 0);
   refreshFits(); checkOver(now, 900);
   saveRun(); hud();
 }
@@ -1796,7 +1799,7 @@ window.sector8Save = () => saveRun();
 // test hook
 window.sector8 = { get S(){ return S; }, get history(){ return history; }, place, undo, startNew, SHAPES, fits, L:() => L, show, get mode(){ return mode; },
   setGame, hasLinkMove, refreshFits, get game(){ return game; }, get link(){ return link; },
-  get wallet(){ return wallet; }, settings, onShake, dropMoves, BONUS, ITEMS, buy, useShuffle, setTarget, get target(){ return target; }, setSetting };
+  get wallet(){ return wallet; }, settings, settleDots, onShake, dropMoves, BONUS, ITEMS, buy, useShuffle, setTarget, get target(){ return target; }, setSetting };
 })();
 </script>
 
