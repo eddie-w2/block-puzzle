@@ -13,6 +13,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
     steps:
       - uses: actions/checkout@v4
 
@@ -25,10 +27,7 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      # Optional: if these secrets exist they replace app/signing/signing.properties.
-      - name: Use signing key from secrets
-        env:
-          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+      - name: Load signing key from secrets
         if: env.KEYSTORE_B64 != ''
         run: |
           echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
@@ -37,22 +36,40 @@ jobs:
           echo "SIGNING_KEY_ALIAS=${{ secrets.SIGNING_KEY_ALIAS }}" >> "$GITHUB_ENV"
           echo "SIGNING_KEY_PASSWORD=${{ secrets.SIGNING_KEY_PASSWORD }}" >> "$GITHUB_ENV"
 
-      - name: Build signed APK
-        run: gradle assembleRelease --no-daemon --stacktrace
-
-      - name: Name the APK
+      # Without the signing secrets the code is still compiled, but nothing is published.
+      - name: Signing secrets missing
+        if: env.KEYSTORE_B64 == ''
         run: |
+          echo "::warning title=No signing key::Add the SIGNING_* repository secrets (see README) to publish installable APKs. Building a debug APK only."
+          gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Build signed APK
+        if: env.KEYSTORE_B64 != ''
+        run: |
+          gradle assembleRelease --no-daemon --stacktrace
           mkdir -p dist
           cp app/build/outputs/apk/release/app-release.apk "dist/Sector8-1.0.${{ github.run_number }}.apk"
 
       - uses: actions/upload-artifact@v4
+        if: env.KEYSTORE_B64 != ''
         with:
           name: Sector8-apk
           path: dist/*.apk
 
-      # Every push to main refreshes the "latest" release so the newest APK is always one tap away.
-      - name: Publish latest build
-        if: github.ref == 'refs/heads/main'
+      # The app checks this release for updates, so it holds only the newest APK.
+      - name: Clear older APKs from the Latest release
+        if: env.KEYSTORE_B64 != '' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view latest >/dev/null 2>&1; then
+            for a in $(gh release view latest --json assets --jq '.assets[].name'); do
+              gh release delete-asset latest "$a" -y
+            done
+          fi
+
+      - name: Publish to the Latest release
+        if: env.KEYSTORE_B64 != '' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
@@ -60,22 +77,14 @@ jobs:
           prerelease: true
           make_latest: false
           files: dist/*.apk
-          body: Newest APK built from main. Download the .apk below on your phone and open it to install or update.
+          body: |
+            Newest build from main. The app finds this update on its own (Settings → Check for updates), or download the .apk below and open it on your phone.
+
+            Changes: ${{ github.event.head_commit.message }}
 
       - name: Publish tagged release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: env.KEYSTORE_B64 != '' && startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*.apk
           generate_release_notes: true
-
-      # One-time: add the Gradle wrapper (gradlew) so Android Studio can open the project directly.
-      - name: Commit Gradle wrapper if missing
-        if: github.ref == 'refs/heads/main' && hashFiles('gradlew') == ''
-        run: |
-          gradle wrapper --gradle-version 8.9 --no-daemon
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add gradlew gradlew.bat gradle/wrapper
-          git commit -m "Add Gradle wrapper"
-          git push
