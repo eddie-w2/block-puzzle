@@ -2,7 +2,7 @@
 
 # Sector 8
 
-A moody, rain-soaked cyberpunk block puzzle for Android. Drag pieces onto an 8×8 grid and clear them.
+A moody, rain-soaked cyberpunk block puzzle for Android. Drag pieces onto an 8×8 grid and clear them. Three modes: Link, Gravity and Classic.
 
 ## Modes
 
@@ -14,7 +14,9 @@ A moody, rain-soaked cyberpunk block puzzle for Android. Drag pieces onto an 8×
 | Color wipe | 1 for 50 credits | Clears every square of one color |
 | Shuffle | 1 for 25 credits | Moves every square to a random spot |
 
-Bonuses reward long links, clearing the last square of a color, big loops and emptying the board. Turn on **Shake to drop** in Settings and shake your phone to make every square fall to the bottom.
+Bonuses reward long links, clearing the last square of a color, big loops and emptying the board. Turn on **Shake to drop** in Settings, then shake your phone or swipe down fast to make every square fall to the bottom.
+
+**Gravity:** Link with gravity always on. Pieces fall to the bottom as soon as you place them, and squares drop into gaps left by links.
 
 **Classic:** fill rows or columns to clear them, and chain clears for bonus points.
 

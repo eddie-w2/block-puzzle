@@ -149,11 +149,12 @@ td.rk{color:var(--dim);width:2em;}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 
 /* mode picker */
-.modes{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
 .mode{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:12px 12px 11px;text-align:left;cursor:pointer;color:var(--dim);
   border:1px solid rgba(125,147,173,.25);background:transparent;font-family:var(--f-ui);
   clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);}
-.mode b{font:400 13px/1 var(--f-display);letter-spacing:.12em;color:var(--ink);text-transform:uppercase;}
+.mode{padding:11px 9px 10px;min-width:0;}
+.mode b{font:400 11px/1 var(--f-display);letter-spacing:.12em;color:var(--ink);text-transform:uppercase;}
 .mode span{font-size:12px;line-height:1.35;}
 .mode[aria-pressed="true"]{border-color:rgba(255,178,46,.7);background:rgba(255,178,46,.08);color:#e9d6b8;}
 .mode[aria-pressed="true"] b{color:var(--amber);text-shadow:0 0 10px rgba(255,178,46,.5);}
@@ -257,8 +258,9 @@ td.rk{color:var(--dim);width:2em;}
         <div class="tag">Neon block puzzle</div>
       </div>
       <div class="modes" role="group" aria-label="Game mode">
-        <button class="mode" data-game="link" aria-pressed="true"><b>Link</b><span>Connect matching colors to clear them</span></button>
-        <button class="mode" data-game="classic" aria-pressed="false"><b>Classic</b><span>Fill rows and columns to clear them</span></button>
+        <button class="mode" data-game="link" aria-pressed="true"><b>Link</b><span>Connect matching colors</span></button>
+        <button class="mode" data-game="gravity" aria-pressed="false"><b>Gravity</b><span>Link, but squares fall</span></button>
+        <button class="mode" data-game="classic" aria-pressed="false"><b>Classic</b><span>Fill rows and columns</span></button>
       </div>
       <div class="btns">
         <button class="btn primary" id="mContinue" hidden>Continue</button>
@@ -278,6 +280,7 @@ td.rk{color:var(--dim);width:2em;}
       <div class="eyebrow">How to play</div>
       <div id="hMode" class="seg" role="group" aria-label="Rules for mode">
         <button class="tab" data-hgame="link">Link</button>
+        <button class="tab" data-hgame="gravity">Gravity</button>
         <button class="tab" data-hgame="classic">Classic</button>
       </div>
       <div class="how" data-how="link">
@@ -286,8 +289,14 @@ td.rk{color:var(--dim);width:2em;}
         <b>03</b><span>Bring a link back to a square it already passed through to make a loop. A loop clears every square of that color on the board.</span>
         <b>04</b><span>Bonuses: a link of 6+ squares +100, 8+ +250, 10+ +500. Clearing the last square of a color +250 (loops add +25 for each extra square). A loop that sweeps 12+ squares +300. Emptying the board +1,000.</span>
         <b>05</b><span>You earn 1 credit for every 100 points. Spend credits in the Shop during a game on items that free up space.</span>
-        <b>06</b><span>With Shake to drop on in Settings, shake your phone to make every square fall to the bottom of its column.</span>
+        <b>06</b><span>With Shake to drop on in Settings, shake your phone or swipe down fast on the board to make every square fall to the bottom of its column.</span>
         <b>07</b><span>The game ends when no piece fits, no two matching squares touch, and you have no items or drops left to try.</span>
+      </div>
+      <div class="how" data-how="gravity" hidden>
+        <b>01</b><span>Plays like Link: match colors to clear squares, with the same bonuses, credits and shop.</span>
+        <b>02</b><span>Gravity is always on. As soon as you place a piece, its squares fall to the bottom of their columns.</span>
+        <b>03</b><span>When a link clears squares, everything above them falls to fill the gap. Plan for squares landing next to new neighbors.</span>
+        <b>04</b><span>The game ends when no piece fits, no two matching squares touch, and you have no items left to try.</span>
       </div>
       <div class="how" data-how="classic" hidden>
         <b>01</b><span>Drag pieces from the tray onto the grid.</span>
@@ -305,7 +314,7 @@ td.rk{color:var(--dim);width:2em;}
     <div class="frame"><div class="panel">
       <div class="eyebrow">Settings</div>
       <div class="toggles" data-toggles></div>
-      <p class="fine">Shake to drop works in Link mode: shake your phone and every square falls to the bottom of its column.</p>
+      <p class="fine">Shake to drop works in Link mode (Gravity mode always drops): shake your phone, or swipe down fast on the board, and every square falls to the bottom of its column.</p>
       <div id="verRow" class="verrow" hidden>
         <div><span class="label">App version</span><span id="verNow">–</span><span id="verStatus" class="fine"></span></div>
         <button class="btn mini" id="verCheck">Check for updates</button>
@@ -365,6 +374,7 @@ td.rk{color:var(--dim);width:2em;}
       <h2>High scores</h2>
       <div id="rMode" class="seg" role="group" aria-label="Scores for mode">
         <button class="tab" data-rgame="link" aria-selected="false">Link</button>
+        <button class="tab" data-rgame="gravity" aria-selected="false">Gravity</button>
         <button class="tab" data-rgame="classic" aria-selected="true">Classic</button>
       </div>
       <div class="tabs" role="tablist">
@@ -400,8 +410,12 @@ if (!settings.v3){ settings.v3 = true; settings.game = 'link'; store.set('settin
 let wallet = Object.assign({credits:0, destroy:0, wipe:0, shuffle:0}, store.get('wallet', {}));
 const saveWallet = () => store.set('wallet', wallet);
 // two modes, each with its own saved run, stats and top 10 (classic keeps the original storage keys)
-let game = settings.game === 'link' ? 'link' : 'classic';
-const key = (k, g = game) => g === 'link' ? k + '.link' : k;
+// modes: Link (main), Gravity (Link with squares that always fall), Classic
+const MODES = ['link', 'gravity', 'classic'];
+const MODE_NAMES = {link:'Link', gravity:'Gravity', classic:'Classic'};
+const isLink = m => m === 'link' || m === 'gravity';   // Gravity plays by Link's rules
+let game = MODES.includes(settings.game) ? settings.game : 'link';
+const key = (k, g = game) => g === 'classic' ? k : k + '.' + g;
 const emptyStats = () => ({games:0, best:0, total:0, lines:0, bestChain:0, bestMulti:0, placed:0, undos:0, dots:0, bestLink:0, loops:0});
 let stats = Object.assign(emptyStats(), store.get(key('stats'), {}));
 let board10 = store.get(key('top'), []);
@@ -451,7 +465,7 @@ const ITEMS = {
 // tray entries: classic = shape index; link = {si, c:[color per square]}
 const tsi = e => e == null ? null : (typeof e === 'number' ? e : e.si);
 const pieceVal = (e, k) => typeof e === 'number' ? SHAPES[e].col + 1 : e.c[k] + 1;   // board value of square k
-const colOf = v => (S && S.mode === 'link' ? LINK_COLORS : COLORS)[v - 1];
+const colOf = v => (S && isLink(S.mode) ? LINK_COLORS : COLORS)[v - 1];
 
 /* ======================= run state ======================= */
 let S = null;          // current run (plain JSON so it snapshots cleanly)
@@ -467,7 +481,7 @@ function rnd(){ // mulberry32, state lives in the run so undo replays the same f
 function pickShape(){ let r = rnd()*TOTAL_W; for (let i=0;i<SHAPES.length;i++){ r -= SHAPES[i].weight; if (r <= 0) return i; } return 0; }
 function pickPiece(){
   const si = pickShape();
-  if (S.mode !== 'link') return si;
+  if (!isLink(S.mode)) return si;
   return {si, c: SHAPES[si].cells.map(() => Math.floor(rnd() * LINK_COLORS.length))};
 }
 function fits(si, gx, gy, b = S.board){
@@ -532,7 +546,7 @@ function recordRun(){
   S.recorded = true;
   stats.games++; stats.total += S.score; stats.placed += S.placed; stats.best = Math.max(stats.best, S.score);
   let entry;
-  if (S.mode === 'link'){
+  if (isLink(S.mode)){
     stats.dots += S.dots; stats.bestLink = Math.max(stats.bestLink, S.bestLink); stats.loops += S.loops;
     entry = {score:S.score, dots:S.dots, link:S.bestLink, loops:S.loops, date:Date.now(), id:S.started};
   } else {
@@ -753,7 +767,7 @@ function tile(ci, s, kind='solid'){
   t = {c, m}; tileCache.set(k, t); return t;
 }
 function drawTile(g, ci, x, y, s, kind, alpha=1, scale=1){
-  if (kind === 'solid' && S && S.mode === 'link') kind = 'node';
+  if (kind === 'solid' && S && isLink(S.mode)) kind = 'node';
   const t = tile(ci, Math.round(s), kind);
   const full = (Math.round(s) + 2*t.m) * scale;
   const cx = x + s/2, cy = y + s/2;
@@ -884,9 +898,9 @@ function refreshFits(){ fitCache = S.tray.map(e => e != null && fitsAnywhere(tsi
 function checkOver(now, delay){
   S.stuck = false;
   if (fitCache.some(Boolean)) return syncHint();
-  if (S.mode === 'link' && hasLinkMove()) return syncHint();
+  if (isLink(S.mode) && hasLinkMove()) return syncHint();
   // Link: owning an item means you can still make room, so the game waits for you
-  if (S.mode === 'link' && (wallet.destroy + wallet.wipe + wallet.shuffle > 0 || (settings.shake && dropMoves().length))){ S.stuck = true; return syncHint(); }
+  if (isLink(S.mode) && (wallet.destroy + wallet.wipe + wallet.shuffle > 0 || (settings.shake && dropMoves().length))){ S.stuck = true; return syncHint(); }
   S.over = true; overAt = now + delay; syncHint();
 }
 
@@ -899,7 +913,7 @@ function linesFor(b){
 
 function place(slot, gx, gy){
   const e = S.tray[slot], si = tsi(e); if (si == null || !fits(si, gx, gy)) return false;
-  const lk = S.mode === 'link';
+  const lk = isLink(S.mode);
   snapshot();
   const sh = SHAPES[si], now = performance.now();
   sh.cells.forEach(([x,y], k) => { const i = (gy+y)*N + gx+x; S.board[i] = pieceVal(e, k); pops.push({i, t:now + (x+y)*18}); });
@@ -938,6 +952,7 @@ function place(slot, gx, gy){
     floaters.push({x:cx, y:cy, text:'+' + gained, t:now, col:'#bfefff'});
   }
   addScore(gained);
+  settle(now, 40);
   S.tray[slot] = refillPiece(slot); dealAt[slot] = now + 140; setTimeout(() => Snd.play('tick'), 140);
   refreshFits();
   checkOver(now, n ? 900 : 550);
@@ -1020,6 +1035,7 @@ function resolveLink(){
   Snd.play('clear', Math.min(4, Math.ceil(n / 2)), Math.min(4, n - 2)); if (purge) Snd.play('purge');
   buzz(loop ? [25, 40, 35] : 18);
   floaters.push({x:L.bx + (mx + .5)*L.cell, y:L.by + (my + .5)*L.cell, text:'+' + pts, t:now, col, big:true});
+  settle(now, Math.min(900, 340 + n * 40));
   refreshFits();
   checkOver(now, 700);
   saveRun(); hud();
@@ -1029,7 +1045,7 @@ function resolveLink(){
 // credits are paid out live: 1 for every 100 points of score in a Link game
 function addScore(pts){
   S.score += pts;
-  if (S.mode !== 'link') return;
+  if (!isLink(S.mode)) return;
   const due = Math.floor(S.score / 100) - (S.earned || 0);
   if (due > 0){
     S.earned = (S.earned || 0) + due; wallet.credits += due; saveWallet();
@@ -1049,7 +1065,7 @@ function syncHint(){
   if (target){ $('#hintText').textContent = ITEMS[target].hint; $('#hintCancel').textContent = 'Cancel'; }
   else if (stuck){
     const items = wallet.destroy + wallet.wipe + wallet.shuffle > 0, drop = settings.shake && dropMoves().length > 0;
-    $('#hintText').textContent = items && drop ? 'No moves left. Shake or use an item' : drop ? 'No moves left. Shake to drop' : 'No moves left. Use an item';
+    $('#hintText').textContent = items && drop ? 'No moves left. Shake, swipe down or use an item' : drop ? 'No moves left. Shake or swipe down' : 'No moves left. Use an item';
     $('#hintCancel').textContent = 'End game'; }
   placeHint();
 }
@@ -1088,6 +1104,12 @@ function useShuffle(){
   filled.forEach((from, k) => { const to = spots[k]; nb[to] = S.board[from]; moves.push({from, to, v:S.board[from]}); });
   S.board = nb; S.used = (S.used || 0) + 1;
   const now = performance.now();
+  if (S.mode === 'gravity'){
+    const fall = new Map(dropMoves().map(m => [m.from, m.to]));
+    const nb2 = Array(N*N).fill(0);
+    for (const m of moves){ if (fall.has(m.to)) m.to = fall.get(m.to); nb2[m.to] = m.v; }
+    S.board = nb2;
+  }
   shuffleAnim = {t:now, moves};
   Snd.play('undo'); Snd.play('deal'); buzz([10, 20, 10, 20, 10]);
   afterItem(now + 450);
@@ -1135,14 +1157,26 @@ if (!native2 && 'DeviceMotionEvent' in window){
   });
 }
 
+/* ---- Gravity mode: squares always fall to the bottom of their column ---- */
+// applies the fall to the board now; the animation starts after `delay` ms so clears can play first
+function settle(now, delay){
+  if (S.mode !== 'gravity') return;
+  const moves = dropMoves(); if (!moves.length) return;
+  const nb = S.board.slice(); for (const m of moves) nb[m.from] = 0; for (const m of moves) nb[m.to] = m.v;
+  S.board = nb; pops = [];
+  shuffleAnim = {t:now + delay, moves, drop:true, dur:560};
+  setTimeout(() => { if (mode === 'play'){ Snd.play('drop'); buzz(12); } }, delay + 280);
+}
+
 function afterItem(now){
   if (S.board.every(x => !x)){ addScore(BONUS.purge); banner = {t:performance.now(), col:'#ffb22e', text:'Sector purged', sub:`+${BONUS.purge}`}; Snd.play('purge'); }
   S.over = false; overAt = 0;
+  if (!shuffleAnim) settle(performance.now(), 360);
   refreshFits(); checkOver(now, 900);
   saveRun(); hud();
 }
 
-function snapshot(){ if (settings.undo) history.push(JSON.stringify({s:S, w:S.mode === 'link' ? wallet : null})); }
+function snapshot(){ if (settings.undo) history.push(JSON.stringify({s:S, w:isLink(S.mode) ? wallet : null})); }
 function undo(){
   if (!S || !settings.undo || !history.length) return;
   const undos = S.undos + 1, snap = JSON.parse(history.pop());
@@ -1168,7 +1202,7 @@ let shownScore = 0;
 function hud(){
   if (!S) return;
   $('#best').textContent = fmt(Math.max(stats.best, S.score));
-  const lk = S.mode === 'link';
+  const lk = isLink(S.mode);
   // undo appears in both modes when it's turned on in Settings
   const u = $('#btnUndo'); u.hidden = !settings.undo; u.classList.toggle('compact', lk);
   u.disabled = !history.length; $('#undoCount').textContent = history.length;
@@ -1216,8 +1250,11 @@ stage.addEventListener('pointerdown', e => {
   }
   if (i < 0 || S.tray[i] == null){
     // Link mode: touching a square on the board starts a link
-    if (S.mode !== 'link') return;
-    const c = cellAt(p, false); if (c < 0 || !S.board[c]) return;
+    if (!isLink(S.mode)) return;
+    // Shake to drop shortcut: remember where a touch starts so a fast downward swipe can trigger a drop
+    swipe = settings.shake ? {x:p.x, y:p.y, t:performance.now(), id:e.pointerId} : null;
+    const c = cellAt(p, false);
+    if (c < 0 || !S.board[c]){ if (swipe){ e.preventDefault(); try{ stage.setPointerCapture(e.pointerId); }catch(_){} } return; }
     e.preventDefault();
     link = {path:[c], v:S.board[c], loop:false, id:e.pointerId, px:p.x, py:p.y};
     try{ stage.setPointerCapture(e.pointerId); }catch(_){}
@@ -1234,8 +1271,20 @@ stage.addEventListener('pointermove', e => {
   if (link && e.pointerId === link.id){ link.px = p.x; link.py = p.y; const c = cellAt(p, true); if (c >= 0) linkTo(c); return; }
   if (!drag || e.pointerId !== drag.id) return; drag.x = p.x; drag.y = p.y;
 });
+// a quick, long, mostly-vertical swipe down that didn't make a link
+let swipe = null;
+function isDropSwipe(e){
+  if (!swipe || !e || e.pointerId !== swipe.id) return false;
+  const p = pt(e), dx = p.x - swipe.x, dy = p.y - swipe.y, dt = performance.now() - swipe.t;
+  return dy > Math.max(L.cell * 2.5, 110) && dt < 600 && Math.abs(dx) < dy * .55;
+}
 function endDrag(e, cancel){
-  if (link && (!e || e.pointerId === link.id)){ if (cancel) link = null; else resolveLink(); return; }
+  const dropSwipe = !cancel && isDropSwipe(e); if (!e || !swipe || e.pointerId === swipe.id) swipe = null;
+  if (link && (!e || e.pointerId === link.id)){
+    if (dropSwipe && new Set(link.path).size < 2){ link = null; onShake(); return; }
+    if (cancel) link = null; else resolveLink(); return;
+  }
+  if (dropSwipe && !drag){ onShake(); return; }
   if (!drag || (e && e.pointerId !== drag.id)) return;
   const d = drag; drag = null;
   const g = dragGeom(d, performance.now() + 1000);
@@ -1247,7 +1296,7 @@ function endDrag(e, cancel){
 let returning = null;
 stage.addEventListener('pointerup', e => endDrag(e, false));
 stage.addEventListener('pointercancel', e => endDrag(e, true));
-stage.addEventListener('lostpointercapture', e => { if ((drag && e.pointerId === drag.id) || (link && e.pointerId === link.id)) endDrag(e, false); });
+stage.addEventListener('lostpointercapture', e => { if ((drag && e.pointerId === drag.id) || (link && e.pointerId === link.id)) endDrag(e, false); else if (swipe && e.pointerId === swipe.id) swipe = null; });
 window.addEventListener('keydown', e => {
   if ((e.key === 'z' && (e.ctrlKey || e.metaKey)) || (e.key === 'u' && mode === 'play')){ e.preventDefault(); if (mode === 'play' || mode === 'over') undo(); }
   if (e.key === 'g' && mode === 'play') onShake();
@@ -1284,7 +1333,7 @@ function render(now){
   let dg = null, previewLines = null;
   if (drag){
     dg = dragGeom(drag, now);
-    if (dg.ok && S.mode !== 'link'){
+    if (dg.ok && !isLink(S.mode)){
       const b = S.board.slice(), sh = SHAPES[tsi(drag.si)];
       for (const [x,y] of sh.cells) b[(dg.gy+y)*N + dg.gx+x] = sh.col + 1;
       const ln = linesFor(b); if (ln.rows.length || ln.cols.length) previewLines = {ln, col:sh.col};
@@ -1304,7 +1353,7 @@ function render(now){
       for (const m of shuffleAnim.moves){
         const fx = m.from % N, fy = (m.from / N) | 0, tx = m.to % N, ty = (m.to / N) | 0;
         // drop: squares fall with gravity and settle with a small bounce, staggered from the bottom up
-        const kk = shuffleAnim.drop ? Math.max(0, Math.min(1, (k * (shuffleAnim.dur) - m.delay) / (shuffleAnim.dur - 160))) : k;
+        const kk = shuffleAnim.drop ? Math.max(0, Math.min(1, (k * (shuffleAnim.dur) - (m.delay || 0)) / (shuffleAnim.dur - 160))) : k;
         const e = shuffleAnim.drop ? bounceOut(kk) : (k < .5 ? 4*k*k*k : 1 - Math.pow(-2*k + 2, 3)/2);
         drawTile(g, colOf(m.v), bx + (fx + (tx - fx)*e)*cell, by + (fy + (ty - fy)*e)*cell, cell, 'solid', 1, shuffleAnim.drop ? 1 : 1 - Math.sin(k*Math.PI)*.25);
       } }
@@ -1449,7 +1498,7 @@ function show(m){
   syncToggles(); hud();
 }
 function gameOver(){
-  const fresh = S.score > stats.best && S.score > 0, lk = S.mode === 'link';
+  const fresh = S.score > stats.best && S.score > 0, lk = isLink(S.mode);
   $('#oScore').textContent = fmt(S.score);
   $('#oL1').textContent = lk ? 'Cleared' : 'Lines';  $('#oLines').textContent = lk ? S.dots : S.lines;
   $('#oL2').textContent = lk ? 'Longest link' : 'Best chain'; $('#oChain').textContent = lk ? S.bestLink : S.maxStreak;
@@ -1507,7 +1556,7 @@ function setSetting(k, v){
   if (k === 'music') Snd.setMusic(v); if (k === 'sfx') Snd.setSfx(v);
   if (k === 'haptics' && v) buzz(20);
   if (k === 'undo') toast(v ? 'Undo on. Each undo deals new pieces.' : 'Undo off');
-  if (k === 'shake'){ syncShake(); toast(v ? 'Shake your phone in Link mode to drop squares' : 'Shake to drop off'); }
+  if (k === 'shake'){ syncShake(); toast(v ? 'In Link mode, shake or swipe down fast to drop squares' : 'Shake to drop off'); }
   syncToggles(); hud();
 }
 document.addEventListener('click', e => {
@@ -1572,17 +1621,17 @@ $('#tBoard').onclick = () => { $('#tBoard').setAttribute('aria-selected', 'true'
 $('#tStats').onclick = () => { $('#tStats').setAttribute('aria-selected', 'true'); $('#tBoard').setAttribute('aria-selected', 'false'); $('#rBoard').hidden = true; $('#rStats').hidden = false; };
 $('#rReset').onclick = e => confirmTap(e.currentTarget, 'Tap again to erase', 'Erase', () => {
   stats = emptyStats(); board10 = []; store.set(key('stats'), stats); store.set(key('top'), board10); renderRecords(); hud();
-  toast(`${game === 'link' ? 'Link' : 'Classic'} scores erased`);
+  toast(`${MODE_NAMES[game]} scores erased`);
 });
 function renderRecords(){
   const d = t => new Date(t).toLocaleDateString(undefined, {month:'short', day:'numeric'});
-  const lk = game === 'link';
+  const lk = isLink(game);
   $$('#rMode .tab').forEach(b => b.setAttribute('aria-selected', b.dataset.rgame === game));
   const cols = lk ? [['Cleared','dots'], ['Link','link'], ['Loops','loops']] : [['Lines','lines'], ['Chain','chain'], ['Undos','undos']];
   $('#rBoard').innerHTML = board10.length ? `<div style="overflow-x:auto"><table>
     <thead><tr><th>#</th><th>Score</th>${cols.map(c => `<th>${c[0]}</th>`).join('')}<th>Date</th></tr></thead><tbody>
     ${board10.map((r, i) => `<tr class="${r.id === lastRecordedId ? 'fresh' : (i === 0 ? 'top' : '')}"><td class="rk">${String(i+1).padStart(2,'0')}</td><td>${fmt(r.score)}</td>${cols.map(c => `<td>${r[c[1]] ?? 0}</td>`).join('')}<td>${d(r.date)}</td></tr>`).join('')}
-    </tbody></table></div>` : `<div class="empty">No finished ${lk ? 'Link' : 'Classic'} games yet. Your 10 best scores will show here.</div>`;
+    </tbody></table></div>` : `<div class="empty">No finished ${MODE_NAMES[game]} games yet. Your 10 best scores will show here.</div>`;
   const avg = stats.games ? Math.round(stats.total / stats.games) : 0;
   const items = lk
     ? [['Games', stats.games], ['Best', fmt(stats.best)], ['Average', fmt(avg)], ['Squares cleared', fmt(stats.dots)], ['Longest link', stats.bestLink], ['Loops', fmt(stats.loops)], ['Pieces placed', fmt(stats.placed)], ['Credits', fmt(wallet.credits)]]
