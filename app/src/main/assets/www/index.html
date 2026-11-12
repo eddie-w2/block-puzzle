@@ -192,6 +192,10 @@ td.rk{color:var(--dim);width:2em;}
 .shopitem b{display:block;font:600 14px/1.2 var(--f-ui);color:var(--ink);letter-spacing:.04em;}
 .shopitem small{display:block;font-size:12px;line-height:1.35;color:var(--dim);margin-top:3px;}
 .shopitem .own{font:400 11px/1 var(--f-num);color:var(--amber);margin-top:6px;display:block;}
+.btn.hold{position:relative;}
+.btn.hold::after{content:"";position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--amber);box-shadow:0 0 8px var(--amber);}
+.btn.hold.charging::after{width:100%;transition:width 5s linear;}
+.devtag{font:400 11px/1 var(--f-num);letter-spacing:.1em;color:#1b0e00;background:var(--amber);padding:3px 5px;margin-left:8px;vertical-align:middle;}
 .btn.mini{height:40px;padding:0 12px;font-size:12px;letter-spacing:.14em;white-space:nowrap;}
 .btn:disabled{opacity:.4;cursor:default;}
 .fine{margin:0;color:var(--dim);font-size:12px;line-height:1.45;}
@@ -313,7 +317,7 @@ td.rk{color:var(--dim);width:2em;}
       <div class="btns">
         <button class="btn primary" id="pResume">Resume</button>
         <button class="btn" id="pRestart">Restart</button>
-        <div class="row2"><button class="btn" id="pSettings">Settings</button><button class="btn" id="pHome">Home</button></div>
+        <div class="row2"><button class="btn hold" id="pSettings">Settings</button><button class="btn" id="pHome">Home</button></div>
       </div>
     </div></div>
   </section>
@@ -321,7 +325,7 @@ td.rk{color:var(--dim);width:2em;}
   <!-- shop -->
   <section id="scrShop" class="overlay" hidden>
     <div class="frame"><div class="panel">
-      <div class="eyebrow">Shop</div>
+      <div class="eyebrow">Shop<span class="devtag" id="shopDev" hidden>DEV · FREE</span></div>
       <div class="wallet"><span class="label">Your credits</span><span id="shopCredits">0</span></div>
       <p class="fine">You earn 1 credit for every 100 points you score.</p>
       <div id="shopList" class="shoplist"></div>
@@ -1386,7 +1390,7 @@ function gameOver(){
   $('#oRecord').hidden = !fresh;
   $('#oUndo').hidden = !settings.undo || !history.length;
   // Link: items (or enough credits to buy one) can rescue a stuck board
-  $('#oItem').hidden = !(lk && wallet.credits >= ITEMS.shuffle.price);
+  $('#oItem').hidden = !(lk && (settings.dev || wallet.credits >= ITEMS.shuffle.price));
   $('#oItem').textContent = 'Buy an item to keep going';
   show('over'); Snd.play(fresh ? 'record' : 'over'); buzz([60, 50, 120]);
 }
@@ -1466,7 +1470,25 @@ $('#mSettings').onclick = () => { settingsReturn = 'menu'; show('settings'); };
 $('#sBack').onclick = () => show(settingsReturn);
 $('#pResume').onclick = () => show('play');
 $('#pRestart').onclick = e => confirmTap(e.currentTarget, 'Tap again to restart', 'Restart', startNew);
-$('#pSettings').onclick = () => { settingsReturn = 'pause'; show('settings'); };
+$('#pSettings').onclick = () => {
+  if (devHeld){ devHeld = false; return; }   // the long press already did its job
+  settingsReturn = 'pause'; show('settings');
+};
+// hidden: hold Settings in the pause menu for 5 seconds to toggle developer mode (free purchases)
+let devTimer = null, devHeld = false;
+const devBtn = $('#pSettings');
+const devStop = () => { clearTimeout(devTimer); devTimer = null; devBtn.classList.remove('charging'); };
+devBtn.addEventListener('pointerdown', () => {
+  devHeld = false; devStop(); void devBtn.offsetWidth; devBtn.classList.add('charging');
+  devTimer = setTimeout(() => {
+    devStop(); devHeld = true;
+    settings.dev = !settings.dev; store.set('settings', settings);
+    Snd.init(); Snd.play(settings.dev ? 'record' : 'over'); buzz([30, 40, 30]);
+    toast(settings.dev ? 'Developer mode on: purchases are free' : 'Developer mode off');
+  }, 5000);
+});
+['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => devBtn.addEventListener(ev, devStop));
+devBtn.addEventListener('contextmenu', e => e.preventDefault());
 $('#pHome').onclick = () => { saveRun(); show('menu'); };
 $('#oUndo').onclick = () => undo();
 $('#oItem').onclick = () => {
@@ -1503,17 +1525,19 @@ function renderRecords(){
 const ITEM_ICON = k => $(`.item[data-item="${k}"] svg`).outerHTML;  // shop reuses the item bar icons
 function renderShop(focus){
   $('#shopCredits').textContent = fmt(wallet.credits);
+  $('#shopDev').hidden = !settings.dev;
   $('#shopList').innerHTML = Object.entries(ITEMS).map(([k, it]) => `
     <div class="shopitem${focus === k ? ' focus' : ''}">
       ${ITEM_ICON(k)}
       <div><b>${it.name}${it.pack > 1 ? ` ×${it.pack}` : ''}</b><small>${it.desc}</small><span class="own">You have ${wallet[k]}</span></div>
-      <button class="btn mini primary" data-buy="${k}" ${wallet.credits < it.price ? 'disabled' : ''}>${it.price} CR</button>
+      <button class="btn mini primary" data-buy="${k}" ${!settings.dev && wallet.credits < it.price ? 'disabled' : ''}>${settings.dev ? 'Free' : it.price + ' CR'}</button>
     </div>`).join('');
   $$('[data-buy]').forEach(b => b.onclick = () => buy(b.dataset.buy));
 }
 function buy(k){
-  const it = ITEMS[k]; if (wallet.credits < it.price) return;
-  wallet.credits -= it.price; wallet[k] += it.pack; saveWallet();
+  const it = ITEMS[k]; if (!settings.dev && wallet.credits < it.price) return;
+  if (!settings.dev) wallet.credits -= it.price;   // developer mode: purchases are free
+  wallet[k] += it.pack; saveWallet();
   Snd.play('record'); buzz(15);
   toast(`Bought ${it.name}${it.pack > 1 ? ` ×${it.pack}` : ''}`);
   renderShop(k); hud();
