@@ -70,6 +70,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
 #btnUndo.compact .ut{display:none;}
 #btnUndo.compact #undoCount{display:none;}
 #linesStat{margin-left:auto;}
+#items:not([hidden]) ~ #linesStat{margin-left:0;min-width:48px;}
 #linesVal.big{font-size:28px;color:var(--amber);text-shadow:0 0 10px rgba(255,178,46,.5);}
 #linesVal.low{color:#ff6a5a;text-shadow:0 0 10px rgba(255,90,78,.6);}
 #btnUndo{height:52px;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;
@@ -152,6 +153,8 @@ td.rk{color:var(--dim);width:2em;}
 
 /* mode picker */
 .modes{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.divider{display:flex;align-items:center;gap:10px;margin:-4px 0;font:600 10px/1 var(--f-ui);letter-spacing:.28em;text-transform:uppercase;color:var(--dim);}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(41,230,255,.35),transparent);}
 .mode{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:12px 12px 11px;text-align:left;cursor:pointer;color:var(--dim);
   border:1px solid rgba(125,147,173,.25);background:transparent;font-family:var(--f-ui);
   clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);}
@@ -163,7 +166,7 @@ td.rk{color:var(--dim);width:2em;}
 #modeTag{display:flex;flex-direction:column;gap:5px;justify-content:center;height:52px;padding-left:14px;border-left:2px solid rgba(255,178,46,.7);}
 #modeTag b{font:400 13px/1 var(--f-display);letter-spacing:.14em;color:var(--amber);}
 #modeTag span{font-size:12px;color:var(--dim);}
-.seg{display:flex;gap:6px;}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
 .seg .tab{flex:1;min-width:0;padding:0 4px;letter-spacing:.14em;}
 /* Link item bar + shop */
 #items{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;min-width:0;}
@@ -265,6 +268,11 @@ td.rk{color:var(--dim);width:2em;}
         <button class="mode" data-game="dots" aria-pressed="false"><b>Classic Dots</b><span>Endless. New dots drop in</span></button>
         <button class="mode" data-game="classic" aria-pressed="false"><b>Classic Blocks</b><span>Fill rows and columns</span></button>
       </div>
+      <div class="divider"><span>More modes</span></div>
+      <div class="modes" role="group" aria-label="More modes">
+        <button class="mode" data-game="rush" aria-pressed="false"><b>Rush</b><span>60 seconds. Loops add time</span></button>
+        <button class="mode" data-game="daily" aria-pressed="false"><b>Daily Sector</b><span id="dailyNote">Today's board is ready</span></button>
+      </div>
       <div class="btns">
         <button class="btn primary" id="mContinue" hidden>Continue</button>
         <button class="btn" id="mNew">New game</button>
@@ -286,6 +294,8 @@ td.rk{color:var(--dim);width:2em;}
         <button class="tab" data-hgame="gravity">Gravity</button>
         <button class="tab" data-hgame="dots" aria-label="Classic Dots">Dots</button>
         <button class="tab" data-hgame="classic" aria-label="Classic Blocks">Blocks</button>
+        <button class="tab" data-hgame="rush" >Rush</button>
+        <button class="tab" data-hgame="daily" aria-label="Daily Sector">Daily</button>
       </div>
       <div class="how" data-how="link">
         <b>01</b><span>Drag pieces from the tray onto the grid. Every square has its own color. Full rows don't clear in this mode.</span>
@@ -309,6 +319,17 @@ td.rk{color:var(--dim);width:2em;}
         <b>04</b><span>Cleared dots leave gaps, the dots above fall, and new dots drop in from the top.</span>
         <b>05</b><span>You earn credits and can use the same shop and items as Link. A destroyed or wiped square's gap fills from above.</span>
         <b>06</b><span>It's endless: if nothing can be linked, the board reshuffles. To finish and save your score, choose End game in the pause menu.</span>
+      </div>
+      <div class="how" data-how="rush" hidden>
+        <b>01</b><span>Classic Dots against a 60-second clock. Link fast.</span>
+        <b>02</b><span>Every loop adds 3 seconds, and loops in a row still multiply their points.</span>
+        <b>03</b><span>Pausing stops the clock. Credits, items and the shop work as usual.</span>
+      </div>
+      <div class="how" data-how="daily" hidden>
+        <b>01</b><span>One board a day, the same for everyone: same starting pieces, same colors, in the same order.</span>
+        <b>02</b><span>Plays by Link's rules. There are no items, shop or undo, so every score is earned the same way.</span>
+        <b>03</b><span>You get one try. You can leave and come back to finish it, but you can't restart.</span>
+        <b>04</b><span>A new board unlocks at midnight. Play every day to build a streak.</span>
       </div>
       <div class="how" data-how="classic" hidden>
         <b>01</b><span>Drag pieces from the tray onto the grid.</span>
@@ -374,6 +395,7 @@ td.rk{color:var(--dim);width:2em;}
         <button class="btn pink" id="oItem" hidden>Use an item to keep going</button>
         <button class="btn pink" id="oUndo">Undo last move</button>
         <button class="btn primary" id="oNew">Play again</button>
+        <p class="fine" id="oDaily" hidden></p>
         <div class="row2"><button class="btn" id="oRecords">High scores</button><button class="btn" id="oHome">Home</button></div>
       </div>
     </div></div>
@@ -389,6 +411,8 @@ td.rk{color:var(--dim);width:2em;}
         <button class="tab" data-rgame="gravity" aria-selected="false">Gravity</button>
         <button class="tab" data-rgame="dots" aria-selected="false" aria-label="Classic Dots">Dots</button>
         <button class="tab" data-rgame="classic" aria-selected="true" aria-label="Classic Blocks">Blocks</button>
+        <button class="tab" data-rgame="rush" aria-selected="false" >Rush</button>
+        <button class="tab" data-rgame="daily" aria-selected="false" aria-label="Daily Sector">Daily</button>
       </div>
       <div class="tabs" role="tablist">
         <button class="tab" role="tab" id="tBoard" aria-selected="true">Top 10</button>
@@ -424,10 +448,12 @@ let wallet = Object.assign({credits:0, destroy:0, wipe:0, shuffle:0}, store.get(
 const saveWallet = () => store.set('wallet', wallet);
 // two modes, each with its own saved run, stats and top 10 (classic keeps the original storage keys)
 // modes: Link (main), Gravity (Link with squares that always fall), Classic
-const MODES = ['link', 'gravity', 'dots', 'classic'];
-const MODE_NAMES = {link:'Link', gravity:'Gravity', dots:'Classic Dots', classic:'Classic Blocks'};
-const isLink = m => m === 'link' || m === 'gravity' || m === 'dots';   // modes that clear by linking colors
-const hasShop = m => m === 'link' || m === 'gravity' || m === 'dots';   // modes with credits, items and the shop
+const MODES = ['link', 'gravity', 'dots', 'classic', 'rush', 'daily'];
+const MODE_NAMES = {link:'Link', gravity:'Gravity', dots:'Classic Dots', classic:'Classic Blocks', rush:'Rush', daily:'Daily Sector'};
+const isDots = m => m === 'dots' || m === 'rush';                     // full board, dots drop in, no pieces
+const RUSH_MS = 60000, RUSH_LOOP_MS = 3000;                         // Rush: 60 s clock, loops add 3 s
+const isLink = m => m === 'link' || m === 'gravity' || m === 'daily' || isDots(m);   // modes that clear by linking colors
+const hasShop = m => m === 'link' || m === 'gravity' || isDots(m);   // Daily has no items, so every board is equal   // modes with credits, items and the shop
 let game = MODES.includes(settings.game) ? settings.game : 'link';
 const key = (k, g = game) => g === 'classic' ? k : k + '.' + g;
 const emptyStats = () => ({games:0, best:0, total:0, lines:0, bestChain:0, bestMulti:0, placed:0, undos:0, dots:0, bestLink:0, loops:0});
@@ -512,15 +538,22 @@ function dealTray(){
 }
 // a used slot refills at once; only lean toward a fitting piece when nothing else in the tray fits
 function refillPiece(slot){
+  if (S.mode === 'daily') return pickPiece();
   const othersFit = S.tray.some((v, i) => i !== slot && v != null && fitsAnywhere(tsi(v)));
   if (othersFit) return pickPiece();
   for (let a = 0; a < 4; a++){ const e = pickPiece(); if (a === 3 || fitsAnywhere(tsi(e))) return e; }
 }
+// Daily Sector: everyone gets the same board and pieces for the calendar day
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+const daySeed = day => { let h = 2166136261; for (const ch of 'sector8:' + day){ h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+const dailyResult = (day = today()) => store.get('daily.' + day, null);
 function freshRun(){
   S = {v:1, mode:game, board:Array(N*N).fill(0), tray:[null,null,null], score:0, rng:(Math.random()*2**32)>>>0,
        streak:0, miss:0, lines:0, placed:0, maxStreak:0, bestMulti:0, undos:0, over:false, started:Date.now(),
        dots:0, bestLink:0, loops:0};
-  if (game === 'dots'){ S.tray = [null, null, null]; fillDots(); }
+  if (game === 'daily'){ S.day = today(); S.rng = daySeed(S.day); }
+  if (isDots(game)){ S.tray = [null, null, null]; fillDots(); }
+  if (game === 'rush') S.timeLeft = RUSH_MS;
   else S.tray = dealTray();
   history = [];
 }
@@ -568,7 +601,9 @@ function saveRun(){
 function loadRun(){
   S = null; history = [];
   const r = store.get(key('run'), null);
-  if (r && r.S && Array.isArray(r.S.board) && r.S.board.length === N*N){ S = r.S; S.mode = S.mode || 'classic'; history = r.history || []; return true; }
+  if (r && r.S && Array.isArray(r.S.board) && r.S.board.length === N*N){ S = r.S; S.mode = S.mode || 'classic'; history = r.history || [];
+    if (S.mode === 'daily' && S.day !== today()){ recordRun(); S = null; history = []; store.del(key('run')); return false; }
+    return true; }
   return false;
 }
 // switch the selected mode: loads that mode's saved run, stats and top 10
@@ -592,7 +627,7 @@ function hasLinkMove(b = S.board){
 
 /* end of a run: goes into stats + top 10 */
 function recordRun(){
-  if (!S || S.score <= 0 || S.recorded) return null;
+  if (!S || S.recorded || (S.score <= 0 && S.mode !== 'daily')) return null;
   S.recorded = true;
   stats.games++; stats.total += S.score; stats.placed += S.placed; stats.best = Math.max(stats.best, S.score);
   let entry;
@@ -603,6 +638,13 @@ function recordRun(){
     stats.lines += S.lines; stats.undos += S.undos;
     stats.bestChain = Math.max(stats.bestChain, S.maxStreak); stats.bestMulti = Math.max(stats.bestMulti, S.bestMulti);
     entry = {score:S.score, lines:S.lines, chain:S.maxStreak, undos:S.undos, date:Date.now(), id:S.started};
+  }
+  if (S.mode === 'daily'){
+    entry.day = S.day; store.set('daily.' + S.day, {score:S.score});
+    const prev = new Date(S.day + 'T12:00'); prev.setDate(prev.getDate() - 1);
+    const y = `${prev.getFullYear()}-${String(prev.getMonth()+1).padStart(2,'0')}-${String(prev.getDate()).padStart(2,'0')}`;
+    stats.dayStreak = stats.lastDay === y ? (stats.dayStreak || 0) + 1 : 1; stats.lastDay = S.day;
+    stats.bestDayStreak = Math.max(stats.bestDayStreak || 0, stats.dayStreak);
   }
   board10.push(entry); board10.sort((a,b)=>b.score-a.score); board10 = board10.slice(0,10);
   store.set(key('stats', S.mode), stats); store.set(key('top', S.mode), board10);
@@ -752,7 +794,7 @@ function layout(){
   const padL = parseFloat(cs.paddingLeft), padR = parseFloat(cs.paddingRight);
   const top = hudB + 14, bottom = railT - 10, avail = bottom - top;
   const maxW = W - padL - padR;
-  const noTray = S && S.mode === 'dots';   // Classic Dots has no pieces, so the board gets the room
+  const noTray = S && isDots(S.mode);   // Classic Dots has no pieces, so the board gets the room
   let bs = Math.min(maxW, noTray ? avail : avail / 1.40, 540);
   const cell = Math.floor(bs / N); bs = cell * N;
   const trayCell = Math.floor(cell * .5);
@@ -950,7 +992,7 @@ function refreshFits(){ fitCache = S.tray.map(e => e != null && fitsAnywhere(tsi
 // the run is over when no piece fits (and, in Link mode, no link can be made)
 function checkOver(now, delay){
   S.stuck = false;
-  if (S.mode === 'dots') return syncHint();   // Classic Dots is endless: the board reshuffles instead of ending
+  if (isDots(S.mode)) return syncHint();   // Classic Dots is endless: the board reshuffles instead of ending
   if (fitCache.some(Boolean)) return syncHint();
   if (isLink(S.mode) && hasLinkMove()) return syncHint();
   // Link: owning an item means you can still make room, so the game waits for you
@@ -1071,7 +1113,7 @@ function resolveLink(){
   if (loop) for (let i=0;i<N*N;i++) if (S.board[i] === v) set.add(i);
   const n = uniq.length;
   const colorsBefore = new Set(S.board.filter(Boolean));
-  const dots = S.mode === 'dots';
+  const dots = isDots(S.mode);
   let pts = dots ? 10 * set.size : 10 * n * (n - 1);   // Classic Dots: 10 points a dot
   const col = colOf(v);
   let mx = 0, my = 0;
@@ -1109,6 +1151,7 @@ function resolveLink(){
   if (mult === 1) floaters.push({x:fx, y:fy, text:'+' + fmt(pts), t:now, col, big:true});
   if (mult > 1) loopStreakFx(fx, fy, col, mult, set, now, `${set.size} dots · ${fmt(base)} × ${mult} = ${fmt(pts)}`);
   settle(now, Math.min(900, 340 + n * 40));
+  if (dots && loop && S.mode === 'rush'){ S.timeLeft += RUSH_LOOP_MS; floaters.push({x:fx, y:fy + L.cell * .7, text:'+3s', t:now + 150, col:'#ffb22e'}); }
   if (dots){ settleDots(now, Math.min(700, 300 + n * 30), 0); }
   refreshFits();
   checkOver(now, 700);
@@ -1201,7 +1244,7 @@ function dropMoves(b = S.board){
   }
   return moves;
 }
-const canShake = () => S && S.mode === 'link' && settings.shake;
+const canShake = () => S && (S.mode === 'link' || S.mode === 'daily') && settings.shake;
 let lastShake = 0;
 function onShake(){
   const now = performance.now();
@@ -1246,19 +1289,20 @@ function afterItem(now){
   if (S.board.every(x => !x)){ addScore(BONUS.purge); banner = {t:performance.now(), col:'#ffb22e', text:'Sector purged', sub:`+${BONUS.purge}`}; Snd.play('purge'); }
   S.over = false; overAt = 0;
   if (!shuffleAnim) settle(performance.now(), 360);
-  if (S.mode === 'dots' && S.board.some(v => !v)) settleDots(performance.now(), 380, 0);
+  if (isDots(S.mode) && S.board.some(v => !v)) settleDots(performance.now(), 380, 0);
   refreshFits(); checkOver(now, 900);
   saveRun(); hud();
 }
 
-function snapshot(){ if (settings.undo) history.push(JSON.stringify({s:S, w:hasShop(S.mode) ? wallet : null})); }
+function snapshot(){ if (settings.undo && S.mode !== 'daily') history.push(JSON.stringify({s:S, w:hasShop(S.mode) ? wallet : null})); }
 function undo(){
   if (!S || !settings.undo || !history.length) return;
-  const undos = S.undos + 1, snap = JSON.parse(history.pop());
+  const undos = S.undos + 1, snap = JSON.parse(history.pop()), clock = S.timeLeft;
   if (snap && snap.s){ S = snap.s; if (snap.w){ wallet = snap.w; saveWallet(); } } else S = snap;   // older saves stored S alone
   S.undos = undos; S.stuck = false; setTarget(null);
+  if (S.mode === 'rush') S.timeLeft = clock;   // undo can't buy back time
   // board and score rewind, but the tray is re-dealt with fresh random pieces
-  S.rng = (Math.random() * 2**32) >>> 0; if (S.mode !== 'dots') S.tray = dealTray();
+  S.rng = (Math.random() * 2**32) >>> 0; if (!isDots(S.mode)) S.tray = dealTray();
   clearFx(); drag = null; overAt = 0; rewind = performance.now();
   const t0 = performance.now(); dealAt = [t0 + 120, t0 + 190, t0 + 260];
   refreshFits(); saveRun(); hud();
@@ -1277,16 +1321,18 @@ let shownScore = 0;
 function hud(){
   if (!S) return;
   $('#best').textContent = fmt(Math.max(stats.best, S.score));
-  const lk = hasShop(S.mode), dots = S.mode === 'dots';
-  // undo appears in every mode when it's turned on in Settings
-  const u = $('#btnUndo'); u.hidden = !settings.undo; u.classList.toggle('compact', lk);
+  const lk = hasShop(S.mode), dots = isDots(S.mode), daily = S.mode === 'daily', rush = S.mode === 'rush';
+  // undo appears in every mode except Daily when it's turned on in Settings
+  const u = $('#btnUndo'); u.hidden = !settings.undo || daily; u.classList.toggle('compact', lk);
   u.disabled = !history.length; $('#undoCount').textContent = history.length;
   $('#items').hidden = !lk; $('#btnShop').hidden = !lk;
-  $('#linesStat').hidden = lk; $('#btnMute').hidden = lk;
-  $('#chain').style.visibility = lk || dots ? 'hidden' : '';
-  $('#linesStat .label').textContent = dots ? 'Dots cleared' : 'Lines';
-  $('#linesVal').classList.toggle('big', dots);
-  if (dots) $('#linesVal').textContent = fmt(S.dots);
+  $('#linesStat').hidden = lk && !rush; $('#btnMute').hidden = lk;
+  $('#chain').style.visibility = lk || dots || daily ? 'hidden' : '';
+  $('#linesStat .label').textContent = rush ? 'Time' : dots ? 'Dots cleared' : daily ? 'Cleared' : 'Lines';
+  $('#linesVal').classList.toggle('big', dots || daily);
+  if (rush){ tickRush.shown = null; const sec = Math.ceil(S.timeLeft / 1000); $('#linesVal').textContent = sec + 's'; $('#linesVal').classList.toggle('low', sec <= 10); }
+  else { $('#linesVal').classList.remove('low'); if (dots || daily) $('#linesVal').textContent = fmt(S.dots); }
+  if (daily) return;
   if (lk){
     $('#credits').textContent = fmt(wallet.credits);
     $$('.item').forEach(b => { const n = wallet[b.dataset.item]; b.querySelector('.cnt').textContent = n; b.classList.toggle('empty', !n);
@@ -1592,9 +1638,20 @@ function render(now){
 let last = performance.now(), bgSkip = 0;
 function frame(now){
   const dt = Math.min(64, now - last); last = now;
+  if (mode === 'play' && S && S.mode === 'rush' && !S.over && !document.hidden) tickRush(dt, now);
   if (mode === 'play' || mode === 'over' || drag || link) render(now);
   if (!reduceMotion || (bgSkip++ % 6 === 0)) drawBg(now, dt);
   requestAnimationFrame(frame);
+}
+
+function tickRush(dt, now){
+  S.timeLeft = Math.max(0, S.timeLeft - dt);
+  const sec = Math.ceil(S.timeLeft / 1000);
+  if (sec !== tickRush.shown){
+    tickRush.shown = sec; $('#linesVal').textContent = sec + 's'; $('#linesVal').classList.toggle('low', sec <= 10);
+    if (sec <= 5 && sec > 0) Snd.play('tick');
+  }
+  if (S.timeLeft <= 0){ link = null; S.over = true; overAt = now - 400; saveRun(); }
 }
 
 /* ======================= screens ======================= */
@@ -1611,16 +1668,19 @@ function show(m){
   syncToggles(); hud();
 }
 function gameOver(manual){
-  $('#oWhy').textContent = manual ? 'You ended the game' : 'No moves left';
+  $('#oWhy').textContent = manual ? 'You ended the game' : S.mode === 'rush' ? "Time's up" : 'No moves left';
+  const daily = S.mode === 'daily';
+  $('#oNew').hidden = daily; $('#oDaily').hidden = !daily;
   const fresh = S.score > stats.best && S.score > 0, lk = isLink(S.mode);
   $('#oScore').textContent = fmt(S.score);
   $('#oL1').textContent = lk ? 'Cleared' : 'Lines';  $('#oLines').textContent = lk ? S.dots : S.lines;
   $('#oL2').textContent = lk ? 'Longest link' : 'Best chain'; $('#oChain').textContent = lk ? S.bestLink : S.maxStreak;
   $('#oL3').textContent = lk ? 'Loops' : 'Undos'; $('#oUndos').textContent = lk ? S.loops : S.undos;
   $('#oRecord').hidden = !fresh;
-  $('#oUndo').hidden = !settings.undo || !history.length;
+  if (daily){ recordRun(); $('#oDaily').textContent = `Today's board is done. A new one unlocks tomorrow.`; }
+  $('#oUndo').hidden = !settings.undo || !history.length || daily;
   // Link: items (or enough credits to buy one) can rescue a stuck board
-  $('#oItem').hidden = manual || S.mode === 'dots' || !(hasShop(S.mode) && (settings.dev || wallet.credits >= ITEMS.shuffle.price));
+  $('#oItem').hidden = manual || isDots(S.mode) || !(hasShop(S.mode) && (settings.dev || wallet.credits >= ITEMS.shuffle.price));
   $('#oItem').textContent = 'Buy an item to keep going';
   show('over'); Snd.play(fresh ? 'record' : 'over'); buzz([60, 50, 120]);
 }
@@ -1635,7 +1695,11 @@ function finishToMenu(){ recordRun(); S = null; history = []; store.del(key('run
 function syncMenu(){
   $$('.mode').forEach(b => b.setAttribute('aria-pressed', b.dataset.game === game));
   $('#mContinue').hidden = !(S && !S.over);
-  $('#mNew').textContent = 'New game';
+  const done = dailyResult();
+  $('#dailyNote').textContent = done ? `Done today · ${fmt(done.score)}` : (S && game === 'daily' && !S.over ? 'In progress' : "Today's board is ready");
+  $('#mNew').textContent = game === 'daily' ? (done ? 'Played today' : "Play today's board") : 'New game';
+  $('#mNew').disabled = game === 'daily' && !!done;
+  $('#pRestart').hidden = game === 'daily';
 }
 $$('.mode').forEach(b => b.onclick = () => { if (b.dataset.game !== game){ setGame(b.dataset.game); syncMenu(); } });
 $$('#rMode .tab').forEach(b => b.onclick = () => { if (b.dataset.rgame !== game) setGame(b.dataset.rgame); renderRecords(); });
@@ -1692,6 +1756,7 @@ $('#btnUndo').onclick = () => undo();
 $('#btnMute').onclick = () => { const on = !(settings.sfx || settings.music); setSetting('sfx', on); setSetting('music', on); toast(on ? 'Sound on' : 'Sound off'); };
 $('#mContinue').onclick = () => { if (L.mode !== S.mode) layout(); shownScore = S.score; $('#score').textContent = fmt(S.score); tileCache.clear(); clearFx(); refreshFits(); show('play'); };
 $('#mNew').onclick = e => {
+  if (game === 'daily' && dailyResult()){ toast("You've played today's board. A new one unlocks tomorrow."); return; }
   if (S && !S.over && S.score > 0) confirmTap(e.currentTarget, 'Tap again to start over', 'New game', startNew);
   else startNew();
 };
@@ -1701,7 +1766,7 @@ $('#hBack').onclick = () => show('menu');
 $('#mSettings').onclick = () => { settingsReturn = 'menu'; show('settings'); };
 $('#sBack').onclick = () => show(settingsReturn);
 $('#pResume').onclick = () => show('play');
-$('#pRestart').onclick = e => confirmTap(e.currentTarget, 'Tap again to restart', 'Restart', startNew);
+$('#pRestart').onclick = e => S && S.mode === 'daily' ? toast('Daily Sector is one try per day') : confirmTap(e.currentTarget, 'Tap again to restart', 'Restart', startNew);
 $('#pEnd').onclick = e => confirmTap(e.currentTarget, 'Tap to confirm', 'End game', () => {
   S.stuck = false; S.over = true; overAt = 0; saveRun(); gameOver(true);
 });
@@ -1751,7 +1816,7 @@ function renderRecords(){
     </tbody></table></div>` : `<div class="empty">No finished ${MODE_NAMES[game]} games yet. Your 10 best scores will show here.</div>`;
   const avg = stats.games ? Math.round(stats.total / stats.games) : 0;
   const items = lk
-    ? [['Games', stats.games], ['Best', fmt(stats.best)], ['Average', fmt(avg)], ['Squares cleared', fmt(stats.dots)], ['Longest link', stats.bestLink], ['Loops', fmt(stats.loops)], game === 'dots' ? ['Length', 'Endless'] : ['Pieces placed', fmt(stats.placed)], hasShop(game) ? ['Credits', fmt(wallet.credits)] : ['Mode', MODE_NAMES[game]]]
+    ? [['Games', stats.games], ['Best', fmt(stats.best)], ['Average', fmt(avg)], ['Squares cleared', fmt(stats.dots)], ['Longest link', stats.bestLink], ['Loops', fmt(stats.loops)], game === 'dots' ? ['Length', 'Endless'] : game === 'rush' ? ['Clock', '60s + 3s a loop'] : game === 'daily' ? ['Days in a row', stats.dayStreak || 0] : ['Pieces placed', fmt(stats.placed)], hasShop(game) ? ['Credits', fmt(wallet.credits)] : game === 'daily' ? ['Best streak', stats.bestDayStreak || 0] : ['Mode', MODE_NAMES[game]]]
     : [['Games', stats.games], ['Best', fmt(stats.best)], ['Average', fmt(avg)], ['Lines', fmt(stats.lines)], ['Best chain', stats.bestChain], ['Most lines at once', stats.bestMulti || 0], ['Pieces placed', fmt(stats.placed)], ['Undos', fmt(stats.undos)]];
   $('#rStats').innerHTML = `<div class="statgrid">${items.map(([k, v]) => `<div><span>${k}</span><span>${v}</span></div>`).join('')}</div>`;
 }
@@ -1850,7 +1915,7 @@ window.sector8Save = () => saveRun();
 
 // test hook
 window.sector8 = { get S(){ return S; }, get history(){ return history; }, place, undo, startNew, SHAPES, fits, L:() => L, show, get mode(){ return mode; },
-  setGame, hasLinkMove, refreshFits, get game(){ return game; }, get link(){ return link; },
+  setGame, hasLinkMove, today, daySeed, get rngState(){ return S && S.rng; }, refreshFits, get game(){ return game; }, get link(){ return link; },
   get wallet(){ return wallet; }, settings, settleDots, get fx(){ return {rings: rings.length, stamp: stamp && stamp.text, flash: !!flash}; }, onShake, dropMoves, BONUS, ITEMS, buy, useShuffle, setTarget, get target(){ return target; }, setSetting };
 })();
 </script>
