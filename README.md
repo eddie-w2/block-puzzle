@@ -10,9 +10,11 @@ A moody, rain-soaked cyberpunk block puzzle for Android. Drag pieces onto an 8×
 
 | Item | Price | What it does |
 | --- | --- | --- |
-| Block destroyer | 5 for 100 credits | Removes one square |
-| Color wipe | 1 for 100 credits | Clears every square of one color |
-| Shuffle | 1 for 50 credits | Moves every square to a random spot |
+| Block destroyer | 5 for 50 credits | Removes one square |
+| Color wipe | 1 for 50 credits | Clears every square of one color |
+| Shuffle | 1 for 25 credits | Moves every square to a random spot |
+
+Bonuses reward long links, clearing the last square of a color, big loops and emptying the board. Turn on **Shake to drop** in Settings and shake your phone to make every square fall to the bottom.
 
 **Classic:** fill rows or columns to clear them, and chain clears for bonus points.
 

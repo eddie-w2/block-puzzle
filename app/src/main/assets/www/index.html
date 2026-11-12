@@ -206,6 +206,7 @@ td.rk{color:var(--dim);width:2em;}
 .verrow > div{display:flex;flex-direction:column;gap:5px;min-width:0;}
 #verNow{font:400 16px/1 var(--f-num);color:var(--ink);}
 .toggles.four{grid-template-columns:1fr 1fr;}
+.toggles.four .tog:last-child:nth-child(odd){grid-column:span 2;}
 
 #toast{position:absolute;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:12;pointer-events:none;
   font:600 12px/1 var(--f-ui);letter-spacing:.24em;text-transform:uppercase;color:var(--ink);background:rgba(8,14,28,.9);border:1px solid var(--line);padding:10px 14px;opacity:0;transition:opacity .25s;white-space:nowrap;}
@@ -283,8 +284,10 @@ td.rk{color:var(--dim);width:2em;}
         <b>01</b><span>Drag pieces from the tray onto the grid. Every square has its own color. Full rows don't clear in this mode.</span>
         <b>02</b><span>To clear squares, drag across touching squares of the same color (up, down or sideways) and let go. Two or more make a link. Longer links score much more.</span>
         <b>03</b><span>Bring a link back to a square it already passed through to make a loop. A loop clears every square of that color on the board.</span>
-        <b>04</b><span>You earn 1 credit for every 100 points. Spend credits in the Shop during a game on items that free up space.</span>
-        <b>05</b><span>The game ends when no piece fits and no two matching squares touch.</span>
+        <b>04</b><span>Bonuses: a link of 6+ squares +100, 8+ +250, 10+ +500. Clearing the last square of a color +250 (loops add +25 for each extra square). A loop that sweeps 12+ squares +300. Emptying the board +1,000.</span>
+        <b>05</b><span>You earn 1 credit for every 100 points. Spend credits in the Shop during a game on items that free up space.</span>
+        <b>06</b><span>With Shake to drop on in Settings, shake your phone to make every square fall to the bottom of its column.</span>
+        <b>07</b><span>The game ends when no piece fits, no two matching squares touch, and you have no items or drops left to try.</span>
       </div>
       <div class="how" data-how="classic" hidden>
         <b>01</b><span>Drag pieces from the tray onto the grid.</span>
@@ -302,6 +305,7 @@ td.rk{color:var(--dim);width:2em;}
     <div class="frame"><div class="panel">
       <div class="eyebrow">Settings</div>
       <div class="toggles" data-toggles></div>
+      <p class="fine">Shake to drop works in Link mode: shake your phone and every square falls to the bottom of its column.</p>
       <div id="verRow" class="verrow" hidden>
         <div><span class="label">App version</span><span id="verNow">–</span><span id="verStatus" class="fine"></span></div>
         <button class="btn mini" id="verCheck">Check for updates</button>
@@ -390,7 +394,7 @@ const store = {
   set(k, v){ try{ localStorage.setItem('sector8.'+k, JSON.stringify(v)); return true; }catch(e){ return false; } },
   del(k){ try{ localStorage.removeItem('sector8.'+k); }catch(e){} }
 };
-const settings = Object.assign({music:true, sfx:true, haptics:true, undo:false, game:'link'}, store.get('settings', {}));
+const settings = Object.assign({music:true, sfx:true, haptics:true, undo:false, shake:false, game:'link'}, store.get('settings', {}));
 if (!settings.v3){ settings.v3 = true; settings.game = 'link'; store.set('settings', settings); }  // Link is now the main mode
 // Link mode wallet: credits earned at 1 per 100 points, and owned items. Kept between games.
 let wallet = Object.assign({credits:0, destroy:0, wipe:0, shuffle:0}, store.get('wallet', {}));
@@ -437,10 +441,12 @@ const TOTAL_W = SHAPES.reduce((a,s)=>a+s.weight,0);
 // Link mode palette: five signal colors that stay apart in the dark
 const LINK_COLORS = ['#d6922f','#3fa3b3','#b84a3e','#8470bf','#c9c2a8'];
 const LINK_NAMES = ['amber','teal','rust','violet','bone'];
+// point bonuses (Link mode; the board-clear bonus applies to Classic too)
+const BONUS = {long6:100, long8:250, mega:500, color:250, overload:300, purge:1000};
 const ITEMS = {
-  destroy: {name:'Block destroyer', pack:5, price:100, desc:'Remove any one square you tap.', hint:'Tap a square to destroy it'},
-  wipe:    {name:'Color wipe',      pack:1, price:100, desc:'Tap a square to clear every square of its color.', hint:'Tap a square to clear its color'},
-  shuffle: {name:'Shuffle',         pack:1, price:50,  desc:'Move every square to a random spot. Colors stay the same.'}
+  destroy: {name:'Block destroyer', pack:5, price:50, desc:'Remove any one square you tap.', hint:'Tap a square to destroy it'},
+  wipe:    {name:'Color wipe',      pack:1, price:50, desc:'Tap a square to clear every square of its color.', hint:'Tap a square to clear its color'},
+  shuffle: {name:'Shuffle',         pack:1, price:25,  desc:'Move every square to a random spot. Colors stay the same.'}
 };
 // tray entries: classic = shape index; link = {si, c:[color per square]}
 const tsi = e => e == null ? null : (typeof e === 'number' ? e : e.si);
@@ -612,7 +618,8 @@ const Snd = {
       case 'link': { const sc = [62,65,67,69,72,74,77,79,81,84,86,89,91,93]; this.tone({type:'triangle', f:H(sc[Math.min(n - 1, sc.length - 1)]), d:.22, g:.07, verb:.35}); this.tone({type:'sine', f:H(sc[Math.min(n - 1, sc.length - 1)] + 12), d:.12, g:.025}); break; }
       case 'unlink': this.tone({type:'triangle', f:H(57), d:.08, g:.04}); break;
       case 'loop': [62,69,74,78].forEach((m,i)=>this.tone({type:'sawtooth', f:H(m), t:i*.03, d:.7, g:.045, cut:2400, verb:.8})); this.tone({type:'sine', f:110, f2:55, d:.5, g:.3}); break;
-      case 'tick':this.tone({type:'square', f:H(81), d:.04, g:.025, cut:2500}); break;
+      case 'drop': [0,1,2].forEach(i => this.tone({type:'sine', f:120 - i*20, f2:45, t:.12 + i*.07, d:.18, g:.28})); this.noise({d:.35, g:.07, f:900, f2:200, q:1}); break;
+      case 'tick': this.tone({type:'square', f:H(81), d:.04, g:.025, cut:2500}); break;
       case 'deal': [0,1,2].forEach(i=>this.tone({type:'square', f:H(81+i*2), t:i*.06, d:.05, g:.03, cut:3000})); break;
       case 'over': [57,53,50,45].forEach((m,i)=>{ this.tone({type:'sawtooth', f:H(m), t:i*.28, d:1.1, g:.07, cut:900, verb:.7}); this.tone({type:'sawtooth', f:H(m)*1.006, t:i*.28, d:1.1, g:.06, cut:900}); }); break;
       case 'record': [69,73,76,81,85].forEach((m,i)=>this.tone({type:'triangle', f:H(m), t:i*.09, d:.6, g:.07, verb:.6})); break;
@@ -879,7 +886,7 @@ function checkOver(now, delay){
   if (fitCache.some(Boolean)) return syncHint();
   if (S.mode === 'link' && hasLinkMove()) return syncHint();
   // Link: owning an item means you can still make room, so the game waits for you
-  if (S.mode === 'link' && wallet.destroy + wallet.wipe + wallet.shuffle > 0){ S.stuck = true; return syncHint(); }
+  if (S.mode === 'link' && (wallet.destroy + wallet.wipe + wallet.shuffle > 0 || (settings.shake && dropMoves().length))){ S.stuck = true; return syncHint(); }
   S.over = true; overAt = now + delay; syncHint();
 }
 
@@ -917,9 +924,9 @@ function place(slot, gx, gy){
     }
     const names = ['', '', 'Double', 'Triple', 'Quad', 'Overload'];
     const purge = S.board.every(v => !v);
-    if (purge){ gained += 500; }
+    if (purge){ gained += BONUS.purge; }
     if (n >= 2 || S.streak >= 2 || purge){
-      banner = {t:now, text: purge ? 'Sector purged' : (n >= 2 ? names[Math.min(n, 5)] : 'Chain'), sub: (S.streak >= 2 ? `chain ×${chainMult.toFixed(1)}` : `${n} lines`) + (purge ? '  +500' : ''), col: purge ? '#ffb22e' : (n >= 3 ? '#ff3fa4' : '#29e6ff')};
+      banner = {t:now, text: purge ? 'Sector purged' : (n >= 2 ? names[Math.min(n, 5)] : 'Chain'), sub: (S.streak >= 2 ? `chain ×${chainMult.toFixed(1)}` : `${n} lines`) + (purge ? `  +${BONUS.purge}` : ''), col: purge ? '#ffb22e' : (n >= 3 ? '#ff3fa4' : '#29e6ff')};
     }
     if (n >= 3 && !reduceMotion) shake = {t:now, mag:Math.min(10, 3 + n*1.6)};
     Snd.play('clear', n, S.streak - 1); if (purge) Snd.play('purge');
@@ -983,8 +990,8 @@ function resolveLink(){
   const set = new Set(uniq);
   if (loop) for (let i=0;i<N*N;i++) if (S.board[i] === v) set.add(i);
   const n = uniq.length;
+  const colorsBefore = new Set(S.board.filter(Boolean));
   let pts = 10 * n * (n - 1);
-  if (loop) pts += 25 * (set.size - n) + 150;
   const col = colOf(v);
   let mx = 0, my = 0;
   for (const i of set){
@@ -996,13 +1003,19 @@ function resolveLink(){
   }
   mx /= set.size; my /= set.size;
   S.dots += set.size; S.bestLink = Math.max(S.bestLink, n); if (loop) S.loops++;
+  // bonuses stack; the banner names the biggest and lists them all
+  const bonuses = [];
+  if (n >= 10) bonuses.push(['Mega link', BONUS.mega]); else if (n >= 8) bonuses.push(['Long link', BONUS.long8]); else if (n >= 6) bonuses.push(['Long link', BONUS.long6]);
+  if (colorsBefore.has(v) && !S.board.includes(v)) bonuses.push([`${LINK_NAMES[v-1]} cleared`, BONUS.color + (loop ? 25 * (set.size - n) : 0)]);
+  if (loop && set.size >= 12) bonuses.push(['Overload', BONUS.overload]);
   const purge = S.board.every(x => !x);
-  if (purge) pts += 500;
+  if (purge) bonuses.push(['Sector purged', BONUS.purge]);
+  for (const b of bonuses) pts += b[1];
   addScore(pts);
-  if (loop || purge || n >= 6){
-    banner = {t:now, col, text: purge ? 'Sector purged' : loop ? 'Loop' : 'Long link',
-      sub: loop ? `all ${LINK_NAMES[v-1]} cleared · ${set.size} squares` : `${n} squares` + (purge ? '  +500' : '')};
-  }
+  if (bonuses.length){
+    const top = bonuses.reduce((a, b) => b[1] > a[1] ? b : a);
+    banner = {t:now, col: purge ? '#ffb22e' : col, text: top[0], sub: bonuses.map(b => `${b[0]} +${b[1]}`).join(' · ')};
+  } else if (loop) banner = {t:now, col, text:'Loop', sub:`${set.size} squares`};
   if ((loop || n >= 6) && !reduceMotion) shake = {t:now, mag:Math.min(9, 3 + set.size * .3)};
   Snd.play('clear', Math.min(4, Math.ceil(n / 2)), Math.min(4, n - 2)); if (purge) Snd.play('purge');
   buzz(loop ? [25, 40, 35] : 18);
@@ -1034,7 +1047,10 @@ function syncHint(){
   const h = $('#hint'), stuck = S && S.stuck && mode === 'play';
   h.hidden = !(target || stuck);
   if (target){ $('#hintText').textContent = ITEMS[target].hint; $('#hintCancel').textContent = 'Cancel'; }
-  else if (stuck){ $('#hintText').textContent = 'No moves left. Use an item'; $('#hintCancel').textContent = 'End game'; }
+  else if (stuck){
+    const items = wallet.destroy + wallet.wipe + wallet.shuffle > 0, drop = settings.shake && dropMoves().length > 0;
+    $('#hintText').textContent = items && drop ? 'No moves left. Shake or use an item' : drop ? 'No moves left. Shake to drop' : 'No moves left. Use an item';
+    $('#hintCancel').textContent = 'End game'; }
   placeHint();
 }
 function placeHint(){
@@ -1076,8 +1092,51 @@ function useShuffle(){
   Snd.play('undo'); Snd.play('deal'); buzz([10, 20, 10, 20, 10]);
   afterItem(now + 450);
 }
+/* ---- Shake to drop (Link mode): every square falls to the bottom of its column ---- */
+function dropMoves(b = S.board){
+  const moves = [];
+  for (let x = 0; x < N; x++){
+    let to = N - 1;
+    for (let y = N - 1; y >= 0; y--){
+      const v = b[y*N + x]; if (!v) continue;
+      if (y !== to) moves.push({from:y*N + x, to:to*N + x, v, delay:(N - 1 - to) * 22});
+      to--;
+    }
+  }
+  return moves;
+}
+const canShake = () => S && S.mode === 'link' && settings.shake;
+let lastShake = 0;
+function onShake(){
+  const now = performance.now();
+  if (now - lastShake < 900) return; lastShake = now;
+  if (mode !== 'play' || !canShake() || S.over || drag || link || target || shuffleAnim) return;
+  const moves = dropMoves();
+  if (!moves.length){ toast('Everything is already at the bottom'); return; }
+  snapshot();
+  const nb = S.board.slice(); for (const m of moves) nb[m.from] = 0; for (const m of moves) nb[m.to] = m.v;
+  S.board = nb; S.drops = (S.drops || 0) + 1;
+  shuffleAnim = {t:now, moves, drop:true, dur:620};
+  if (!reduceMotion) shake = {t:now + 380, mag:5};
+  Snd.play('drop'); buzz([40, 30, 20]);
+  afterItem(now + 700);
+}
+window.sector8Shake = onShake;
+const native2 = window.AndroidBridge;
+function syncShake(){ try{ if (native2 && native2.setShake) native2.setShake(!!settings.shake); }catch(e){} }
+// phone browsers: use motion events when there's no app to do it
+if (!native2 && 'DeviceMotionEvent' in window){
+  let peaks = [];
+  window.addEventListener('devicemotion', e => {
+    if (!settings.shake) return;
+    const a = e.accelerationIncludingGravity; if (!a || a.x == null) return;
+    const gF = Math.hypot(a.x, a.y, a.z) / 9.81, t = performance.now();
+    if (gF > 2.3){ peaks = peaks.filter(p => t - p < 800); peaks.push(t); if (peaks.length >= 2){ peaks = []; onShake(); } }
+  });
+}
+
 function afterItem(now){
-  if (S.board.every(x => !x)){ addScore(500); banner = {t:performance.now(), col:'#ffb22e', text:'Sector purged', sub:'+500'}; Snd.play('purge'); }
+  if (S.board.every(x => !x)){ addScore(BONUS.purge); banner = {t:performance.now(), col:'#ffb22e', text:'Sector purged', sub:`+${BONUS.purge}`}; Snd.play('purge'); }
   S.over = false; overAt = 0;
   refreshFits(); checkOver(now, 900);
   saveRun(); hud();
@@ -1191,6 +1250,7 @@ stage.addEventListener('pointercancel', e => endDrag(e, true));
 stage.addEventListener('lostpointercapture', e => { if ((drag && e.pointerId === drag.id) || (link && e.pointerId === link.id)) endDrag(e, false); });
 window.addEventListener('keydown', e => {
   if ((e.key === 'z' && (e.ctrlKey || e.metaKey)) || (e.key === 'u' && mode === 'play')){ e.preventDefault(); if (mode === 'play' || mode === 'over') undo(); }
+  if (e.key === 'g' && mode === 'play') onShake();
   if (e.key === 'Escape'){ if (mode === 'play') show('pause'); else if (mode === 'pause') show('play'); }
 });
 
@@ -1207,6 +1267,8 @@ function drawPiece(g, e, x, y, s, kind='solid', alpha=1){
   const sh = SHAPES[tsi(e)];
   sh.cells.forEach(([cx, cy], k) => drawTile(g, colOf(pieceVal(e, k)), x + cx*s, y + cy*s, s, kind, alpha));
 }
+function bounceOut(k){ const n = 7.5625, d = 2.75;
+  if (k < 1/d) return n*k*k; if (k < 2/d) return n*(k -= 1.5/d)*k + .75; if (k < 2.5/d) return n*(k -= 2.25/d)*k + .9375; return n*(k -= 2.625/d)*k + .984375; }
 function easeOutBack(k){ const c = 1.7; return 1 + (c+1)*Math.pow(k-1, 3) + c*Math.pow(k-1, 2); }
 
 function render(now){
@@ -1236,12 +1298,15 @@ function render(now){
   const inLink = link ? new Set(link.path) : null;
   let flying = null;
   if (shuffleAnim){
-    const k = (now - shuffleAnim.t) / 520;
+    const k = (now - shuffleAnim.t) / (shuffleAnim.dur || 520);
     if (k >= 1) shuffleAnim = null;
-    else { flying = new Set(shuffleAnim.moves.map(m => m.to)); const e = k < .5 ? 4*k*k*k : 1 - Math.pow(-2*k + 2, 3)/2;
+    else { flying = new Set(shuffleAnim.moves.map(m => m.to));
       for (const m of shuffleAnim.moves){
         const fx = m.from % N, fy = (m.from / N) | 0, tx = m.to % N, ty = (m.to / N) | 0;
-        drawTile(g, colOf(m.v), bx + (fx + (tx - fx)*e)*cell, by + (fy + (ty - fy)*e)*cell, cell, 'solid', 1, 1 - Math.sin(k*Math.PI)*.25);
+        // drop: squares fall with gravity and settle with a small bounce, staggered from the bottom up
+        const kk = shuffleAnim.drop ? Math.max(0, Math.min(1, (k * (shuffleAnim.dur) - m.delay) / (shuffleAnim.dur - 160))) : k;
+        const e = shuffleAnim.drop ? bounceOut(kk) : (k < .5 ? 4*k*k*k : 1 - Math.pow(-2*k + 2, 3)/2);
+        drawTile(g, colOf(m.v), bx + (fx + (tx - fx)*e)*cell, by + (fy + (ty - fy)*e)*cell, cell, 'solid', 1, shuffleAnim.drop ? 1 : 1 - Math.sin(k*Math.PI)*.25);
       } }
   }
   for (let i=0;i<N*N;i++){
@@ -1345,7 +1410,9 @@ function render(now){
       const jitter = (!reduceMotion && k < .2) ? (Math.random()*2 - 1)*3 : 0;
       g.shadowColor = banner.col; g.shadowBlur = 18; g.fillStyle = '#f4feff';
       g.fillText(banner.text.toUpperCase(), bx + bs/2 + jitter, cy);
-      g.shadowBlur = 0; g.font = `${Math.round(fs*.42)}px "Share Tech Mono", monospace`; g.fillStyle = banner.col;
+      g.shadowBlur = 0; let sfs = Math.round(fs*.42); g.font = `${sfs}px "Share Tech Mono", monospace`;
+      while (sfs > 9 && g.measureText(banner.sub.toUpperCase()).width > bs - 16){ sfs--; g.font = `${sfs}px "Share Tech Mono", monospace`; }
+      g.fillStyle = banner.col;
       g.fillText(banner.sub.toUpperCase(), bx + bs/2, cy + fs*.95);
       g.globalAlpha = 1;
     }
@@ -1422,9 +1489,10 @@ const ICONS = {
   sfx:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
   sfxOff:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m16 9 5 6M21 9l-5 6"/></svg>',
   haptics:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M3 8v8M21 8v8"/></svg>',
+  shake:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="3" width="8" height="14" rx="1.5"/><path d="M12 20v2M9 20.5l-1 1.5M15 20.5l1 1.5M4 7l-1.5 2L4 11M20 7l1.5 2L20 11"/></svg>',
   undo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>'
 };
-const TOGS = [['music','Music'],['sfx','Sound effects'],['haptics','Vibration'],['undo','Undo button']];
+const TOGS = [['music','Music'],['sfx','Sound effects'],['haptics','Vibration'],['undo','Undo button'],['shake','Shake to drop']];
 $$('[data-toggles]').forEach(box => {
   box.classList.add('four');
   box.innerHTML = TOGS.map(([k, l]) => `<button class="tog" data-k="${k}" aria-pressed="true">${ICONS[k]}<span>${l}</span><span class="st"></span></button>`).join('');
@@ -1439,6 +1507,7 @@ function setSetting(k, v){
   if (k === 'music') Snd.setMusic(v); if (k === 'sfx') Snd.setSfx(v);
   if (k === 'haptics' && v) buzz(20);
   if (k === 'undo') toast(v ? 'Undo on. Each undo deals new pieces.' : 'Undo off');
+  if (k === 'shake'){ syncShake(); toast(v ? 'Shake your phone in Link mode to drop squares' : 'Shake to drop off'); }
   syncToggles(); hud();
 }
 document.addEventListener('click', e => {
@@ -1590,7 +1659,7 @@ function boot(){
   layout(); initRain();
   window.addEventListener('resize', () => { layout(); initRain(); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { tileCache.clear(); buildGridLayer(); buildSky(); });
-  hud(); show('menu');
+  hud(); show('menu'); syncShake();
   requestAnimationFrame(frame);
   // save on the way out
   window.addEventListener('pagehide', saveRun);
@@ -1616,7 +1685,7 @@ window.sector8Save = () => saveRun();
 // test hook
 window.sector8 = { get S(){ return S; }, get history(){ return history; }, place, undo, startNew, SHAPES, fits, L:() => L, show, get mode(){ return mode; },
   setGame, hasLinkMove, refreshFits, get game(){ return game; }, get link(){ return link; },
-  get wallet(){ return wallet; }, settings, buy, useShuffle, setTarget, get target(){ return target; }, setSetting };
+  get wallet(){ return wallet; }, settings, onShake, dropMoves, BONUS, ITEMS, buy, useShuffle, setTarget, get target(){ return target; }, setSetting };
 })();
 </script>
 

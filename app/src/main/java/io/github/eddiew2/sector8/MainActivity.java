@@ -6,6 +6,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -47,7 +51,7 @@ import java.util.regex.Pattern;
  * repo's "latest" GitHub release, and if it holds a newer Sector8-x.y.N.apk it offers
  * to download and install it.
  */
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements SensorEventListener {
 
     private static final String HOST = "appassets.androidplatform.net";
     private static final String START_URL = "https://" + HOST + "/assets/www/index.html";
@@ -61,6 +65,12 @@ public class MainActivity extends Activity {
     private File downloadedApk;
     private boolean waitingForInstallPermission;
     private volatile boolean downloading;
+
+    // Shake to drop: the game turns this on from its Settings
+    private SensorManager sensors;
+    private volatile boolean shakeWanted;
+    private boolean shakeListening;
+    private long firstPeakAt, lastShakeAt;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -261,6 +271,36 @@ public class MainActivity extends Activity {
         return b.toString("UTF-8");
     }
 
+    /* ---------------- shake to drop ---------------- */
+
+    private void updateShakeListener() {
+        if (sensors == null) sensors = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        if (sensors == null) return;
+        Sensor acc = sensors.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        if (shakeWanted && !shakeListening && acc != null) {
+            shakeListening = sensors.registerListener(this, acc, SensorManager.SENSOR_DELAY_GAME);
+        } else if (!shakeWanted && shakeListening) {
+            sensors.unregisterListener(this);
+            shakeListening = false;
+        }
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent e) {
+        float x = e.values[0], y = e.values[1], z = e.values[2];
+        double g = Math.sqrt(x * x + y * y + z * z) / SensorManager.GRAVITY_EARTH;
+        if (g < 2.3) return;
+        long now = System.currentTimeMillis();
+        // a shake is two strong jolts within 0.8 s, at most once per second
+        if (now - firstPeakAt > 800) { firstPeakAt = now; return; }
+        if (now - lastShakeAt < 1000) return;
+        lastShakeAt = now; firstPeakAt = 0;
+        web.evaluateJavascript("window.sector8Shake && window.sector8Shake()", null);
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) { }
+
     /* ---------------- activity plumbing ---------------- */
 
     /** Back button: the game pauses / closes its menus first, and only exits from the home screen. */
@@ -298,6 +338,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         web.evaluateJavascript("window.sector8Save && window.sector8Save()", null);
+        if (shakeListening && sensors != null) { sensors.unregisterListener(this); shakeListening = false; }
         web.onPause();
         super.onPause();
     }
@@ -306,6 +347,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         web.onResume();
+        updateShakeListener();
         if (waitingForInstallPermission && Build.VERSION.SDK_INT >= 26 && getPackageManager().canRequestPackageInstalls()) {
             waitingForInstallPermission = false;
             launchInstaller();
@@ -327,6 +369,9 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void checkUpdate() { checkForUpdate(true); }
+
+        @JavascriptInterface
+        public void setShake(boolean on) { shakeWanted = on; runOnUiThread(MainActivity.this::updateShakeListener); }
 
         @JavascriptInterface
         public void installUpdate() { runOnUiThread(MainActivity.this::downloadAndInstall); }
