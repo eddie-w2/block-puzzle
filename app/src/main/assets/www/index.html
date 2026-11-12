@@ -262,7 +262,7 @@ td.rk{color:var(--dim);width:2em;}
       <div class="modes" role="group" aria-label="Game mode">
         <button class="mode" data-game="link" aria-pressed="true"><b>Link</b><span>Place blocks, link matching colors</span></button>
         <button class="mode" data-game="gravity" aria-pressed="false"><b>Gravity</b><span>Link, but every square falls</span></button>
-        <button class="mode" data-game="dots" aria-pressed="false"><b>Classic Dots</b><span>30 moves. New dots drop in</span></button>
+        <button class="mode" data-game="dots" aria-pressed="false"><b>Classic Dots</b><span>Endless. New dots drop in</span></button>
         <button class="mode" data-game="classic" aria-pressed="false"><b>Classic Blocks</b><span>Fill rows and columns</span></button>
       </div>
       <div class="btns">
@@ -307,7 +307,7 @@ td.rk{color:var(--dim);width:2em;}
         <b>02</b><span>Drag across touching dots of one color (up, down or sideways) and let go to clear them. Each dot is worth 10 points.</span>
         <b>03</b><span>Close a loop to clear every dot of that color. The new dots that drop in won't be that color.</span>
         <b>04</b><span>Cleared dots leave gaps, the dots above fall, and new dots drop in from the top.</span>
-        <b>05</b><span>You have 30 moves, and each link uses one. If nothing can be linked, the board reshuffles.</span>
+        <b>05</b><span>It's endless: if nothing can be linked, the board reshuffles. To finish and save your score, choose End game in the pause menu.</span>
       </div>
       <div class="how" data-how="classic" hidden>
         <b>01</b><span>Drag pieces from the tray onto the grid.</span>
@@ -340,7 +340,7 @@ td.rk{color:var(--dim);width:2em;}
       <h2>Paused</h2>
       <div class="btns">
         <button class="btn primary" id="pResume">Resume</button>
-        <button class="btn" id="pRestart">Restart</button>
+        <div class="row2"><button class="btn" id="pRestart">Restart</button><button class="btn" id="pEnd">End game</button></div>
         <div class="row2"><button class="btn hold" id="pSettings">Settings</button><button class="btn" id="pHome">Home</button></div>
       </div>
     </div></div>
@@ -360,7 +360,7 @@ td.rk{color:var(--dim);width:2em;}
   <!-- game over -->
   <section id="scrOver" class="overlay" hidden>
     <div class="frame"><div class="panel">
-      <div class="eyebrow">No moves left</div>
+      <div class="eyebrow" id="oWhy">No moves left</div>
       <h2>Game over</h2>
       <div id="oRecord" class="record" hidden>New high score</div>
       <div class="bigscore" id="oScore">0</div>
@@ -427,7 +427,6 @@ const MODES = ['link', 'gravity', 'dots', 'classic'];
 const MODE_NAMES = {link:'Link', gravity:'Gravity', dots:'Classic Dots', classic:'Classic Blocks'};
 const isLink = m => m === 'link' || m === 'gravity' || m === 'dots';   // modes that clear by linking colors
 const hasShop = m => m === 'link' || m === 'gravity';                   // modes with credits, items and the shop
-const DOTS_MOVES = 30;
 let game = MODES.includes(settings.game) ? settings.game : 'link';
 const key = (k, g = game) => g === 'classic' ? k : k + '.' + g;
 const emptyStats = () => ({games:0, best:0, total:0, lines:0, bestChain:0, bestMulti:0, placed:0, undos:0, dots:0, bestLink:0, loops:0});
@@ -520,7 +519,7 @@ function freshRun(){
   S = {v:1, mode:game, board:Array(N*N).fill(0), tray:[null,null,null], score:0, rng:(Math.random()*2**32)>>>0,
        streak:0, miss:0, lines:0, placed:0, maxStreak:0, bestMulti:0, undos:0, over:false, started:Date.now(),
        dots:0, bestLink:0, loops:0};
-  if (game === 'dots'){ S.tray = [null, null, null]; S.moves = DOTS_MOVES; fillDots(); }
+  if (game === 'dots'){ S.tray = [null, null, null]; fillDots(); }
   else S.tray = dealTray();
   history = [];
 }
@@ -958,7 +957,7 @@ function refreshFits(){ fitCache = S.tray.map(e => e != null && fitsAnywhere(tsi
 // the run is over when no piece fits (and, in Link mode, no link can be made)
 function checkOver(now, delay){
   S.stuck = false;
-  if (S.mode === 'dots'){ if (S.moves <= 0){ S.over = true; overAt = now + delay; } return syncHint(); }
+  if (S.mode === 'dots') return syncHint();   // Classic Dots is endless: the board reshuffles instead of ending
   if (fitCache.some(Boolean)) return syncHint();
   if (isLink(S.mode) && hasLinkMove()) return syncHint();
   // Link: owning an item means you can still make room, so the game waits for you
@@ -1100,7 +1099,7 @@ function resolveLink(){
   buzz(loop ? [25, 40, 35] : 18);
   floaters.push({x:L.bx + (mx + .5)*L.cell, y:L.by + (my + .5)*L.cell, text:'+' + pts, t:now, col, big:true});
   settle(now, Math.min(900, 340 + n * 40));
-  if (dots){ S.moves--; settleDots(now, Math.min(700, 300 + n * 30), loop ? v : 0); }
+  if (dots){ settleDots(now, Math.min(700, 300 + n * 30), loop ? v : 0); }
   refreshFits();
   checkOver(now, 700);
   saveRun(); hud();
@@ -1274,9 +1273,9 @@ function hud(){
   $('#items').hidden = !lk; $('#btnShop').hidden = !lk;
   $('#linesStat').hidden = lk; $('#btnMute').hidden = lk;
   $('#chain').style.visibility = lk || dots ? 'hidden' : '';
-  $('#linesStat .label').textContent = dots ? 'Moves left' : 'Lines';
-  $('#linesVal').classList.toggle('low', dots && S.moves <= 5); $('#linesVal').classList.toggle('big', dots);
-  if (dots){ $('#linesVal').textContent = S.moves; return; }
+  $('#linesStat .label').textContent = dots ? 'Dots cleared' : 'Lines';
+  $('#linesVal').classList.toggle('big', dots);
+  if (dots){ $('#linesVal').textContent = fmt(S.dots); return; }
   if (lk){
     $('#credits').textContent = fmt(wallet.credits);
     $$('.item').forEach(b => { const n = wallet[b.dataset.item]; b.querySelector('.cnt').textContent = n; b.classList.toggle('empty', !n);
@@ -1567,7 +1566,8 @@ function show(m){
   if (m !== 'play') setTarget(null); else syncHint();
   syncToggles(); hud();
 }
-function gameOver(){
+function gameOver(manual){
+  $('#oWhy').textContent = manual ? 'You ended the game' : 'No moves left';
   const fresh = S.score > stats.best && S.score > 0, lk = isLink(S.mode);
   $('#oScore').textContent = fmt(S.score);
   $('#oL1').textContent = lk ? 'Cleared' : 'Lines';  $('#oLines').textContent = lk ? S.dots : S.lines;
@@ -1658,6 +1658,9 @@ $('#mSettings').onclick = () => { settingsReturn = 'menu'; show('settings'); };
 $('#sBack').onclick = () => show(settingsReturn);
 $('#pResume').onclick = () => show('play');
 $('#pRestart').onclick = e => confirmTap(e.currentTarget, 'Tap again to restart', 'Restart', startNew);
+$('#pEnd').onclick = e => confirmTap(e.currentTarget, 'Tap to confirm', 'End game', () => {
+  S.stuck = false; S.over = true; overAt = 0; saveRun(); gameOver(true);
+});
 $('#pSettings').onclick = () => {
   if (devHeld){ devHeld = false; return; }   // the long press already did its job
   settingsReturn = 'pause'; show('settings');
@@ -1704,7 +1707,7 @@ function renderRecords(){
     </tbody></table></div>` : `<div class="empty">No finished ${MODE_NAMES[game]} games yet. Your 10 best scores will show here.</div>`;
   const avg = stats.games ? Math.round(stats.total / stats.games) : 0;
   const items = lk
-    ? [['Games', stats.games], ['Best', fmt(stats.best)], ['Average', fmt(avg)], ['Squares cleared', fmt(stats.dots)], ['Longest link', stats.bestLink], ['Loops', fmt(stats.loops)], game === 'dots' ? ['Moves per game', DOTS_MOVES] : ['Pieces placed', fmt(stats.placed)], hasShop(game) ? ['Credits', fmt(wallet.credits)] : ['Mode', MODE_NAMES[game]]]
+    ? [['Games', stats.games], ['Best', fmt(stats.best)], ['Average', fmt(avg)], ['Squares cleared', fmt(stats.dots)], ['Longest link', stats.bestLink], ['Loops', fmt(stats.loops)], game === 'dots' ? ['Length', 'Endless'] : ['Pieces placed', fmt(stats.placed)], hasShop(game) ? ['Credits', fmt(wallet.credits)] : ['Mode', MODE_NAMES[game]]]
     : [['Games', stats.games], ['Best', fmt(stats.best)], ['Average', fmt(avg)], ['Lines', fmt(stats.lines)], ['Best chain', stats.bestChain], ['Most lines at once', stats.bestMulti || 0], ['Pieces placed', fmt(stats.placed)], ['Undos', fmt(stats.undos)]];
   $('#rStats').innerHTML = `<div class="statgrid">${items.map(([k, v]) => `<div><span>${k}</span><span>${v}</span></div>`).join('')}</div>`;
 }
@@ -1742,7 +1745,7 @@ $$('.item').forEach(b => b.onclick = () => {
 });
 $('#hintCancel').onclick = () => {
   if (target) return setTarget(null);
-  if (S && S.stuck) confirmTap($('#hintCancel'), 'Tap to confirm', 'End game', () => { S.stuck = false; S.over = true; syncHint(); saveRun(); gameOver(); });
+  if (S && S.stuck) confirmTap($('#hintCancel'), 'Tap to confirm', 'End game', () => { S.stuck = false; S.over = true; syncHint(); saveRun(); gameOver(true); });
 };
 
 /* ======================= updates (Android app only) ======================= */
