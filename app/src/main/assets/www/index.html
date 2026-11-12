@@ -70,6 +70,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
 #btnUndo.compact .ut{display:none;}
 #btnUndo.compact #undoCount{display:none;}
 #linesStat{margin-left:auto;}
+#linesVal.big{font-size:28px;color:var(--amber);text-shadow:0 0 10px rgba(255,178,46,.5);}
+#linesVal.low{color:#ff6a5a;text-shadow:0 0 10px rgba(255,90,78,.6);}
 #btnUndo{height:52px;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;
   font:600 15px/1 var(--f-ui);letter-spacing:.22em;color:#ffe3f1;text-transform:uppercase;
   border:1px solid rgba(255,63,164,.6);background:linear-gradient(180deg,rgba(255,63,164,.2),rgba(255,63,164,.06));
@@ -149,12 +151,12 @@ td.rk{color:var(--dim);width:2em;}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 
 /* mode picker */
-.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .mode{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:12px 12px 11px;text-align:left;cursor:pointer;color:var(--dim);
   border:1px solid rgba(125,147,173,.25);background:transparent;font-family:var(--f-ui);
   clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);}
-.mode{padding:11px 9px 10px;min-width:0;}
-.mode b{font:400 11px/1 var(--f-display);letter-spacing:.12em;color:var(--ink);text-transform:uppercase;}
+.mode{padding:11px 11px 10px;min-width:0;}
+.mode b{font:400 12px/1.2 var(--f-display);letter-spacing:.12em;color:var(--ink);text-transform:uppercase;}
 .mode span{font-size:12px;line-height:1.35;}
 .mode[aria-pressed="true"]{border-color:rgba(255,178,46,.7);background:rgba(255,178,46,.08);color:#e9d6b8;}
 .mode[aria-pressed="true"] b{color:var(--amber);text-shadow:0 0 10px rgba(255,178,46,.5);}
@@ -162,7 +164,7 @@ td.rk{color:var(--dim);width:2em;}
 #modeTag b{font:400 13px/1 var(--f-display);letter-spacing:.14em;color:var(--amber);}
 #modeTag span{font-size:12px;color:var(--dim);}
 .seg{display:flex;gap:6px;}
-.seg .tab{flex:1;}
+.seg .tab{flex:1;min-width:0;padding:0 4px;letter-spacing:.14em;}
 /* Link item bar + shop */
 #items{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;min-width:0;}
 .item{position:relative;height:52px;display:grid;place-items:center;cursor:pointer;color:#e9d6b8;border:1px solid rgba(255,178,46,.4);background:rgba(255,178,46,.06);
@@ -258,9 +260,10 @@ td.rk{color:var(--dim);width:2em;}
         <div class="tag">Neon block puzzle</div>
       </div>
       <div class="modes" role="group" aria-label="Game mode">
-        <button class="mode" data-game="link" aria-pressed="true"><b>Link</b><span>Connect matching colors</span></button>
-        <button class="mode" data-game="gravity" aria-pressed="false"><b>Gravity</b><span>Link, but squares fall</span></button>
-        <button class="mode" data-game="classic" aria-pressed="false"><b>Classic</b><span>Fill rows and columns</span></button>
+        <button class="mode" data-game="link" aria-pressed="true"><b>Link</b><span>Place blocks, link matching colors</span></button>
+        <button class="mode" data-game="gravity" aria-pressed="false"><b>Gravity</b><span>Link, but every square falls</span></button>
+        <button class="mode" data-game="dots" aria-pressed="false"><b>Classic Dots</b><span>30 moves. New dots drop in</span></button>
+        <button class="mode" data-game="classic" aria-pressed="false"><b>Classic Blocks</b><span>Fill rows and columns</span></button>
       </div>
       <div class="btns">
         <button class="btn primary" id="mContinue" hidden>Continue</button>
@@ -281,7 +284,8 @@ td.rk{color:var(--dim);width:2em;}
       <div id="hMode" class="seg" role="group" aria-label="Rules for mode">
         <button class="tab" data-hgame="link">Link</button>
         <button class="tab" data-hgame="gravity">Gravity</button>
-        <button class="tab" data-hgame="classic">Classic</button>
+        <button class="tab" data-hgame="dots" aria-label="Classic Dots">Dots</button>
+        <button class="tab" data-hgame="classic" aria-label="Classic Blocks">Blocks</button>
       </div>
       <div class="how" data-how="link">
         <b>01</b><span>Drag pieces from the tray onto the grid. Every square has its own color. Full rows don't clear in this mode.</span>
@@ -298,13 +302,20 @@ td.rk{color:var(--dim);width:2em;}
         <b>03</b><span>When a link clears squares, everything above them falls to fill the gap. Plan for squares landing next to new neighbors.</span>
         <b>04</b><span>The game ends when no piece fits, no two matching squares touch, and you have no items left to try.</span>
       </div>
+      <div class="how" data-how="dots" hidden>
+        <b>01</b><span>The board starts full of dots. There are no pieces to place.</span>
+        <b>02</b><span>Drag across touching dots of one color (up, down or sideways) and let go to clear them. Each dot is worth 10 points.</span>
+        <b>03</b><span>Close a loop to clear every dot of that color. The new dots that drop in won't be that color.</span>
+        <b>04</b><span>Cleared dots leave gaps, the dots above fall, and new dots drop in from the top.</span>
+        <b>05</b><span>You have 30 moves, and each link uses one. If nothing can be linked, the board reshuffles.</span>
+      </div>
       <div class="how" data-how="classic" hidden>
         <b>01</b><span>Drag pieces from the tray onto the grid.</span>
         <b>02</b><span>Fill a whole row or column to clear it. Clearing several at once multiplies the points.</span>
         <b>03</b><span>Clear again within 3 moves to build a chain. Each link in the chain adds ×0.5 to your points.</span>
         <b>04</b><span>The game ends when none of your three pieces fits.</span>
       </div>
-      <p class="fine">Used tray slots refill right away. Turn on Undo in Settings to take back moves; each undo deals new pieces.</p>
+      <p class="fine">Turn on Undo in Settings to take back moves. Each undo brings new random pieces or dots.</p>
       <button class="btn primary" id="hBack">Got it</button>
     </div></div>
   </section>
@@ -375,7 +386,8 @@ td.rk{color:var(--dim);width:2em;}
       <div id="rMode" class="seg" role="group" aria-label="Scores for mode">
         <button class="tab" data-rgame="link" aria-selected="false">Link</button>
         <button class="tab" data-rgame="gravity" aria-selected="false">Gravity</button>
-        <button class="tab" data-rgame="classic" aria-selected="true">Classic</button>
+        <button class="tab" data-rgame="dots" aria-selected="false" aria-label="Classic Dots">Dots</button>
+        <button class="tab" data-rgame="classic" aria-selected="true" aria-label="Classic Blocks">Blocks</button>
       </div>
       <div class="tabs" role="tablist">
         <button class="tab" role="tab" id="tBoard" aria-selected="true">Top 10</button>
@@ -411,9 +423,11 @@ let wallet = Object.assign({credits:0, destroy:0, wipe:0, shuffle:0}, store.get(
 const saveWallet = () => store.set('wallet', wallet);
 // two modes, each with its own saved run, stats and top 10 (classic keeps the original storage keys)
 // modes: Link (main), Gravity (Link with squares that always fall), Classic
-const MODES = ['link', 'gravity', 'classic'];
-const MODE_NAMES = {link:'Link', gravity:'Gravity', classic:'Classic'};
-const isLink = m => m === 'link' || m === 'gravity';   // Gravity plays by Link's rules
+const MODES = ['link', 'gravity', 'dots', 'classic'];
+const MODE_NAMES = {link:'Link', gravity:'Gravity', dots:'Classic Dots', classic:'Classic Blocks'};
+const isLink = m => m === 'link' || m === 'gravity' || m === 'dots';   // modes that clear by linking colors
+const hasShop = m => m === 'link' || m === 'gravity';                   // modes with credits, items and the shop
+const DOTS_MOVES = 30;
 let game = MODES.includes(settings.game) ? settings.game : 'link';
 const key = (k, g = game) => g === 'classic' ? k : k + '.' + g;
 const emptyStats = () => ({games:0, best:0, total:0, lines:0, bestChain:0, bestMulti:0, placed:0, undos:0, dots:0, bestLink:0, loops:0});
@@ -506,7 +520,38 @@ function freshRun(){
   S = {v:1, mode:game, board:Array(N*N).fill(0), tray:[null,null,null], score:0, rng:(Math.random()*2**32)>>>0,
        streak:0, miss:0, lines:0, placed:0, maxStreak:0, bestMulti:0, undos:0, over:false, started:Date.now(),
        dots:0, bestLink:0, loops:0};
-  S.tray = dealTray(); history = [];
+  if (game === 'dots'){ S.tray = [null, null, null]; S.moves = DOTS_MOVES; fillDots(); }
+  else S.tray = dealTray();
+  history = [];
+}
+// Classic Dots: a full board of random dots that always has at least one match
+function randomDot(exclude){ let v; do { v = 1 + Math.floor(rnd() * LINK_COLORS.length); } while (v === exclude); return v; }
+function fillDots(){ do { for (let i=0;i<N*N;i++) S.board[i] = randomDot(); } while (!hasLinkMove()); }
+// after a link: dots above fall, new ones drop in from the top (a loop's color sits out the refill)
+function settleDots(now, delay, exclude){
+  const moves = [], nb = Array(N*N).fill(0);
+  for (let x = 0; x < N; x++){
+    let to = N - 1;
+    for (let y = N - 1; y >= 0; y--){
+      const v = S.board[y*N + x]; if (!v) continue;
+      nb[to*N + x] = v;
+      if (y !== to) moves.push({from:y*N + x, to:to*N + x, v, delay:(N - 1 - to) * 18});
+      to--;
+    }
+    const gap = to + 1;   // rows 0..to are empty: drop new dots in from above
+    for (let r = 0; r < gap; r++){
+      const v = randomDot(exclude); nb[r*N + x] = v;
+      moves.push({fx:x, fy:r - gap, to:r*N + x, v, delay:(N - 1 - r) * 18 + 60});
+    }
+  }
+  S.board = nb; pops = [];
+  if (moves.length) shuffleAnim = {t:now + delay, moves, drop:true, dur:640};
+  // nothing to link? reshuffle, like the original games
+  if (!hasLinkMove()){
+    setTimeout(() => toast('No matches left, so the dots were reshuffled'), delay + 700);
+    do { for (let i = N*N - 1; i > 0; i--){ const j = Math.floor(rnd() * (i + 1)); [S.board[i], S.board[j]] = [S.board[j], S.board[i]]; } } while (!hasLinkMove());
+    shuffleAnim = {t:now + delay, moves:S.board.map((v, i) => ({fx:i % N, fy:(i / N | 0) - N, to:i, v, delay:(N - 1 - (i / N | 0)) * 18})), drop:true, dur:700};
+  }
 }
 function saveRun(){
   if (!S) { store.del(key('run')); return; }
@@ -701,14 +746,15 @@ function layout(){
   const padL = parseFloat(cs.paddingLeft), padR = parseFloat(cs.paddingRight);
   const top = hudB + 14, bottom = railT - 10, avail = bottom - top;
   const maxW = W - padL - padR;
-  let bs = Math.min(maxW, avail / 1.40, 540);
+  const noTray = S && S.mode === 'dots';   // Classic Dots has no pieces, so the board gets the room
+  let bs = Math.min(maxW, noTray ? avail : avail / 1.40, 540);
   const cell = Math.floor(bs / N); bs = cell * N;
   const trayCell = Math.floor(cell * .5);
-  const trayH = trayCell * 5 + 10, gap = Math.max(14, cell * .4);
+  const trayH = noTray ? 0 : trayCell * 5 + 10, gap = noTray ? 0 : Math.max(14, cell * .4);
   const total = bs + gap + trayH;
   const bx = Math.round(padL + (maxW - bs) / 2), by = Math.round(top + Math.max(0, (avail - total) / 2));
   const tw = Math.min(maxW, bs + cell*1.2), tx = Math.round(padL + (maxW - tw)/2);
-  L = {cell, bs, bx, by, trayCell, ty: by + bs + gap, th: trayH, tx, tw, slotW: tw/3};
+  L = {cell, bs, bx, by, trayCell, ty: noTray ? H + 999 : by + bs + gap, th: trayH, tx, tw, slotW: tw/3, mode: S && S.mode};
   requestAnimationFrame(() => placeHint());
   tileCache.clear();
   buildGridLayer(); buildSky();
@@ -725,6 +771,20 @@ function tile(ci, s, kind='solid'){
   const g = c.getContext('2d'); g.scale(DPR, DPR); g.translate(m, m);
   const ins = Math.max(1, s * .045), w = s - 2*ins, ch = s * .2;
   // angular hull plate: top-left and bottom-right corners chamfered
+  if (kind === 'dot' || kind === 'dotLit'){
+    // Classic Dots: a lit glass bead with a dark core
+    const c0 = s / 2, r = s * (kind === 'dotLit' ? .36 : .32);
+    g.shadowColor = color; g.shadowBlur = s * (kind === 'dotLit' ? .4 : .2);
+    g.beginPath(); g.arc(c0, c0, r, 0, Math.PI * 2); g.fillStyle = '#07090d'; g.fill(); g.shadowBlur = 0;
+    const gr = g.createRadialGradient(c0 - r*.3, c0 - r*.35, r*.1, c0, c0, r);
+    gr.addColorStop(0, hexA(color, .95)); gr.addColorStop(.55, hexA(color, .55)); gr.addColorStop(1, hexA(color, .25));
+    g.beginPath(); g.arc(c0, c0, r, 0, Math.PI * 2); g.fillStyle = gr; g.fill();
+    g.lineWidth = Math.max(1, s * .035); g.strokeStyle = color; g.shadowColor = color; g.shadowBlur = s * .1; g.stroke(); g.shadowBlur = 0;
+    g.beginPath(); g.arc(c0, c0, r * .38, 0, Math.PI * 2); g.fillStyle = 'rgba(3,6,14,.5)'; g.fill();
+    g.beginPath(); g.arc(c0 - r*.35, c0 - r*.4, r * .14, 0, Math.PI * 2); g.fillStyle = 'rgba(255,248,235,.75)'; g.fill();
+    if (kind === 'dotLit'){ g.beginPath(); g.arc(c0, c0, r * 1.22, 0, Math.PI * 2); g.lineWidth = Math.max(1, s * .025); g.strokeStyle = hexA(color, .7); g.stroke(); }
+    t = {c, m}; tileCache.set(k, t); return t;
+  }
   const hull = (o = 0) => { g.beginPath(); g.moveTo(ins + ch + o, ins + o); g.lineTo(ins + w - o, ins + o); g.lineTo(ins + w - o, ins + w - ch - o);
     g.lineTo(ins + w - ch - o, ins + w - o); g.lineTo(ins + o, ins + w - o); g.lineTo(ins + o, ins + ch + o); g.closePath(); };
   if (kind === 'ghost'){
@@ -767,6 +827,7 @@ function tile(ci, s, kind='solid'){
   t = {c, m}; tileCache.set(k, t); return t;
 }
 function drawTile(g, ci, x, y, s, kind, alpha=1, scale=1){
+  if (S && S.mode === 'dots'){ if (kind === 'solid' || kind === 'node') kind = 'dot'; else if (kind === 'nodeLit') kind = 'dotLit'; }
   if (kind === 'solid' && S && isLink(S.mode)) kind = 'node';
   const t = tile(ci, Math.round(s), kind);
   const full = (Math.round(s) + 2*t.m) * scale;
@@ -897,10 +958,11 @@ function refreshFits(){ fitCache = S.tray.map(e => e != null && fitsAnywhere(tsi
 // the run is over when no piece fits (and, in Link mode, no link can be made)
 function checkOver(now, delay){
   S.stuck = false;
+  if (S.mode === 'dots'){ if (S.moves <= 0){ S.over = true; overAt = now + delay; } return syncHint(); }
   if (fitCache.some(Boolean)) return syncHint();
   if (isLink(S.mode) && hasLinkMove()) return syncHint();
   // Link: owning an item means you can still make room, so the game waits for you
-  if (isLink(S.mode) && (wallet.destroy + wallet.wipe + wallet.shuffle > 0 || (settings.shake && dropMoves().length))){ S.stuck = true; return syncHint(); }
+  if (hasShop(S.mode) && (wallet.destroy + wallet.wipe + wallet.shuffle > 0 || (settings.shake && dropMoves().length))){ S.stuck = true; return syncHint(); }
   S.over = true; overAt = now + delay; syncHint();
 }
 
@@ -1006,7 +1068,8 @@ function resolveLink(){
   if (loop) for (let i=0;i<N*N;i++) if (S.board[i] === v) set.add(i);
   const n = uniq.length;
   const colorsBefore = new Set(S.board.filter(Boolean));
-  let pts = 10 * n * (n - 1);
+  const dots = S.mode === 'dots';
+  let pts = dots ? 10 * set.size : 10 * n * (n - 1);   // Classic Dots: 10 points a dot
   const col = colOf(v);
   let mx = 0, my = 0;
   for (const i of set){
@@ -1020,10 +1083,11 @@ function resolveLink(){
   S.dots += set.size; S.bestLink = Math.max(S.bestLink, n); if (loop) S.loops++;
   // bonuses stack; the banner names the biggest and lists them all
   const bonuses = [];
-  if (n >= 10) bonuses.push(['Mega link', BONUS.mega]); else if (n >= 8) bonuses.push(['Long link', BONUS.long8]); else if (n >= 6) bonuses.push(['Long link', BONUS.long6]);
-  if (colorsBefore.has(v) && !S.board.includes(v)) bonuses.push([`${LINK_NAMES[v-1]} cleared`, BONUS.color + (loop ? 25 * (set.size - n) : 0)]);
-  if (loop && set.size >= 12) bonuses.push(['Overload', BONUS.overload]);
-  const purge = S.board.every(x => !x);
+  if (dots){}
+  else if (n >= 10) bonuses.push(['Mega link', BONUS.mega]); else if (n >= 8) bonuses.push(['Long link', BONUS.long8]); else if (n >= 6) bonuses.push(['Long link', BONUS.long6]);
+  if (!dots && colorsBefore.has(v) && !S.board.includes(v)) bonuses.push([`${LINK_NAMES[v-1]} cleared`, BONUS.color + (loop ? 25 * (set.size - n) : 0)]);
+  if (!dots && loop && set.size >= 12) bonuses.push(['Overload', BONUS.overload]);
+  const purge = !dots && S.board.every(x => !x);
   if (purge) bonuses.push(['Sector purged', BONUS.purge]);
   for (const b of bonuses) pts += b[1];
   addScore(pts);
@@ -1036,6 +1100,7 @@ function resolveLink(){
   buzz(loop ? [25, 40, 35] : 18);
   floaters.push({x:L.bx + (mx + .5)*L.cell, y:L.by + (my + .5)*L.cell, text:'+' + pts, t:now, col, big:true});
   settle(now, Math.min(900, 340 + n * 40));
+  if (dots){ S.moves--; settleDots(now, Math.min(700, 300 + n * 30), loop ? v : 0); }
   refreshFits();
   checkOver(now, 700);
   saveRun(); hud();
@@ -1045,7 +1110,7 @@ function resolveLink(){
 // credits are paid out live: 1 for every 100 points of score in a Link game
 function addScore(pts){
   S.score += pts;
-  if (!isLink(S.mode)) return;
+  if (!hasShop(S.mode)) return;
   const due = Math.floor(S.score / 100) - (S.earned || 0);
   if (due > 0){
     S.earned = (S.earned || 0) + due; wallet.credits += due; saveWallet();
@@ -1176,14 +1241,14 @@ function afterItem(now){
   saveRun(); hud();
 }
 
-function snapshot(){ if (settings.undo) history.push(JSON.stringify({s:S, w:isLink(S.mode) ? wallet : null})); }
+function snapshot(){ if (settings.undo) history.push(JSON.stringify({s:S, w:hasShop(S.mode) ? wallet : null})); }
 function undo(){
   if (!S || !settings.undo || !history.length) return;
   const undos = S.undos + 1, snap = JSON.parse(history.pop());
   if (snap && snap.s){ S = snap.s; if (snap.w){ wallet = snap.w; saveWallet(); } } else S = snap;   // older saves stored S alone
   S.undos = undos; S.stuck = false; setTarget(null);
   // board and score rewind, but the tray is re-dealt with fresh random pieces
-  S.rng = (Math.random() * 2**32) >>> 0; S.tray = dealTray();
+  S.rng = (Math.random() * 2**32) >>> 0; if (S.mode !== 'dots') S.tray = dealTray();
   clearFx(); drag = null; overAt = 0; rewind = performance.now();
   const t0 = performance.now(); dealAt = [t0 + 120, t0 + 190, t0 + 260];
   refreshFits(); saveRun(); hud();
@@ -1202,13 +1267,16 @@ let shownScore = 0;
 function hud(){
   if (!S) return;
   $('#best').textContent = fmt(Math.max(stats.best, S.score));
-  const lk = isLink(S.mode);
-  // undo appears in both modes when it's turned on in Settings
+  const lk = hasShop(S.mode), dots = S.mode === 'dots';
+  // undo appears in every mode when it's turned on in Settings
   const u = $('#btnUndo'); u.hidden = !settings.undo; u.classList.toggle('compact', lk);
   u.disabled = !history.length; $('#undoCount').textContent = history.length;
   $('#items').hidden = !lk; $('#btnShop').hidden = !lk;
   $('#linesStat').hidden = lk; $('#btnMute').hidden = lk;
-  $('#chain').style.visibility = lk ? 'hidden' : '';
+  $('#chain').style.visibility = lk || dots ? 'hidden' : '';
+  $('#linesStat .label').textContent = dots ? 'Moves left' : 'Lines';
+  $('#linesVal').classList.toggle('low', dots && S.moves <= 5); $('#linesVal').classList.toggle('big', dots);
+  if (dots){ $('#linesVal').textContent = S.moves; return; }
   if (lk){
     $('#credits').textContent = fmt(wallet.credits);
     $$('.item').forEach(b => { const n = wallet[b.dataset.item]; b.querySelector('.cnt').textContent = n; b.classList.toggle('empty', !n);
@@ -1350,13 +1418,15 @@ function render(now){
     const k = (now - shuffleAnim.t) / (shuffleAnim.dur || 520);
     if (k >= 1) shuffleAnim = null;
     else { flying = new Set(shuffleAnim.moves.map(m => m.to));
+      g.save(); g.beginPath(); g.rect(bx - 4, by - 4, bs + 8, bs + 8); g.clip();
       for (const m of shuffleAnim.moves){
-        const fx = m.from % N, fy = (m.from / N) | 0, tx = m.to % N, ty = (m.to / N) | 0;
+        const fx = m.fx ?? m.from % N, fy = m.fy ?? ((m.from / N) | 0), tx = m.to % N, ty = (m.to / N) | 0;
         // drop: squares fall with gravity and settle with a small bounce, staggered from the bottom up
         const kk = shuffleAnim.drop ? Math.max(0, Math.min(1, (k * (shuffleAnim.dur) - (m.delay || 0)) / (shuffleAnim.dur - 160))) : k;
         const e = shuffleAnim.drop ? bounceOut(kk) : (k < .5 ? 4*k*k*k : 1 - Math.pow(-2*k + 2, 3)/2);
         drawTile(g, colOf(m.v), bx + (fx + (tx - fx)*e)*cell, by + (fy + (ty - fy)*e)*cell, cell, 'solid', 1, shuffleAnim.drop ? 1 : 1 - Math.sin(k*Math.PI)*.25);
-      } }
+      }
+      g.restore(); }
   }
   for (let i=0;i<N*N;i++){
     const v = S.board[i]; if (!v) continue;
@@ -1506,13 +1576,13 @@ function gameOver(){
   $('#oRecord').hidden = !fresh;
   $('#oUndo').hidden = !settings.undo || !history.length;
   // Link: items (or enough credits to buy one) can rescue a stuck board
-  $('#oItem').hidden = !(lk && (settings.dev || wallet.credits >= ITEMS.shuffle.price));
+  $('#oItem').hidden = !(hasShop(S.mode) && (settings.dev || wallet.credits >= ITEMS.shuffle.price));
   $('#oItem').textContent = 'Buy an item to keep going';
   show('over'); Snd.play(fresh ? 'record' : 'over'); buzz([60, 50, 120]);
 }
 function startNew(){
   if (S && S.score > 0) recordRun();
-  freshRun(); shownScore = 0; $('#score').textContent = '0';
+  freshRun(); layout(); shownScore = 0; $('#score').textContent = '0';
   clearFx(); drag = null; link = null; returning = null; overAt = 0; tileCache.clear(); { const t0 = performance.now(); dealAt = [t0 + 150, t0 + 220, t0 + 290]; }
   refreshFits(); saveRun(); show('play');
   setTimeout(() => Snd.play('deal'), 150);
@@ -1576,7 +1646,7 @@ function confirmTap(btn, question, label, action){
 $('#btnPause').onclick = () => { if (mode === 'play') show('pause'); };
 $('#btnUndo').onclick = () => undo();
 $('#btnMute').onclick = () => { const on = !(settings.sfx || settings.music); setSetting('sfx', on); setSetting('music', on); toast(on ? 'Sound on' : 'Sound off'); };
-$('#mContinue').onclick = () => { shownScore = S.score; $('#score').textContent = fmt(S.score); tileCache.clear(); clearFx(); refreshFits(); show('play'); };
+$('#mContinue').onclick = () => { if (L.mode !== S.mode) layout(); shownScore = S.score; $('#score').textContent = fmt(S.score); tileCache.clear(); clearFx(); refreshFits(); show('play'); };
 $('#mNew').onclick = e => {
   if (S && !S.over && S.score > 0) confirmTap(e.currentTarget, 'Tap again to start over', 'New game', startNew);
   else startNew();
@@ -1634,7 +1704,7 @@ function renderRecords(){
     </tbody></table></div>` : `<div class="empty">No finished ${MODE_NAMES[game]} games yet. Your 10 best scores will show here.</div>`;
   const avg = stats.games ? Math.round(stats.total / stats.games) : 0;
   const items = lk
-    ? [['Games', stats.games], ['Best', fmt(stats.best)], ['Average', fmt(avg)], ['Squares cleared', fmt(stats.dots)], ['Longest link', stats.bestLink], ['Loops', fmt(stats.loops)], ['Pieces placed', fmt(stats.placed)], ['Credits', fmt(wallet.credits)]]
+    ? [['Games', stats.games], ['Best', fmt(stats.best)], ['Average', fmt(avg)], ['Squares cleared', fmt(stats.dots)], ['Longest link', stats.bestLink], ['Loops', fmt(stats.loops)], game === 'dots' ? ['Moves per game', DOTS_MOVES] : ['Pieces placed', fmt(stats.placed)], hasShop(game) ? ['Credits', fmt(wallet.credits)] : ['Mode', MODE_NAMES[game]]]
     : [['Games', stats.games], ['Best', fmt(stats.best)], ['Average', fmt(avg)], ['Lines', fmt(stats.lines)], ['Best chain', stats.bestChain], ['Most lines at once', stats.bestMulti || 0], ['Pieces placed', fmt(stats.placed)], ['Undos', fmt(stats.undos)]];
   $('#rStats').innerHTML = `<div class="statgrid">${items.map(([k, v]) => `<div><span>${k}</span><span>${v}</span></div>`).join('')}</div>`;
 }
