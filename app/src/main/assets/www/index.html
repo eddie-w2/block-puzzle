@@ -153,6 +153,11 @@ td.rk{color:var(--dim);width:2em;}
 
 /* mode picker */
 .modes{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.modes.compact{grid-template-columns:repeat(3,1fr);gap:6px;}
+.modes.compact .mode{padding:9px 8px 8px;gap:4px;}
+.modes.compact .mode b{font-size:9.5px;letter-spacing:.06em;}
+.modes.compact .mode span{font-size:10.5px;line-height:1.3;}
+#btnClear{flex:0 0 auto;height:52px;}
 .divider{display:flex;align-items:center;gap:10px;margin:-4px 0;font:600 10px/1 var(--f-ui);letter-spacing:.28em;text-transform:uppercase;color:var(--dim);}
 .divider::before,.divider::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(41,230,255,.35),transparent);}
 .mode{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:12px 12px 11px;text-align:left;cursor:pointer;color:var(--dim);
@@ -166,7 +171,7 @@ td.rk{color:var(--dim);width:2em;}
 #modeTag{display:flex;flex-direction:column;gap:5px;justify-content:center;height:52px;padding-left:14px;border-left:2px solid rgba(255,178,46,.7);}
 #modeTag b{font:400 13px/1 var(--f-display);letter-spacing:.14em;color:var(--amber);}
 #modeTag span{font-size:12px;color:var(--dim);}
-.seg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.seg{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}
 .seg .tab{font-size:11px;letter-spacing:.08em;}
 .seg .tab{flex:1;min-width:0;padding:0 4px;letter-spacing:.14em;}
 /* Link item bar + shop */
@@ -244,6 +249,7 @@ td.rk{color:var(--dim);width:2em;}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
       <span class="ut">Undo</span><span id="undoCount">0</span>
     </button>
+    <button class="btn mini" id="btnClear" hidden>Clear</button>
     <div class="railstat" id="linesStat"><span class="label">Lines</span><span id="linesVal">0</span></div>
     <div id="items" hidden>
       <button class="item" data-item="destroy" aria-label="Block destroyer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="6"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg><span class="cnt">0</span><span class="nm">Destroy</span></button>
@@ -270,11 +276,13 @@ td.rk{color:var(--dim);width:2em;}
         <button class="mode" data-game="classic" aria-pressed="false"><b>Classic Blocks</b><span>Fill rows and columns</span></button>
       </div>
       <div class="divider"><span>More modes</span></div>
-      <div class="modes" role="group" aria-label="More modes">
+      <div class="modes compact" role="group" aria-label="More modes">
         <button class="mode" data-game="rush" aria-pressed="false"><b>Rush</b><span>60 seconds. Loops add time</span></button>
         <button class="mode" data-game="daily" aria-pressed="false"><b>Daily Sector</b><span id="dailyNote">Today's board is ready</span></button>
         <button class="mode" data-game="surge" aria-pressed="false"><b>Surge</b><span>Rows push up. Don't hit the top</span></button>
         <button class="mode" data-game="corrupt" aria-pressed="false"><b>Corruption</b><span>Static spreads. Link beside it</span></button>
+        <button class="mode" data-game="circuit" aria-pressed="false"><b>Circuit</b><span>Connect pairs, fill the grid</span></button>
+        <button class="mode" data-game="2048" aria-pressed="false"><b>2048</b><span>Slide and merge tiles</span></button>
       </div>
       <div class="btns">
         <button class="btn primary" id="mContinue" hidden>Continue</button>
@@ -301,6 +309,8 @@ td.rk{color:var(--dim);width:2em;}
         <button class="tab" data-hgame="daily" aria-label="Daily Sector">Daily</button>
         <button class="tab" data-hgame="surge" >Surge</button>
         <button class="tab" data-hgame="corrupt" aria-label="Corruption">Static</button>
+        <button class="tab" data-hgame="circuit" >Circuit</button>
+        <button class="tab" data-hgame="2048" >2048</button>
       </div>
       <div class="how" data-how="link">
         <b>01</b><span>Drag pieces from the tray onto the grid. Every square has its own color. Full rows don't clear in this mode.</span>
@@ -347,6 +357,18 @@ td.rk{color:var(--dim);width:2em;}
         <b>02</b><span>Every 3 moves the static spreads to a neighboring square, eating colors first. The count at the bottom shows when.</span>
         <b>03</b><span>Make a link that runs right beside static squares to purge them, for +40 each.</span>
         <b>04</b><span>The Block destroyer removes one static square. A Color wipe on static clears all of it.</span>
+      </div>
+      <div class="how" data-how="circuit" hidden>
+        <b>01</b><span>Each color has two nodes. Drag from a node to draw a circuit to its partner.</span>
+        <b>02</b><span>Circuits can't cross. Drawing through another one cuts it, and you can drag back along a circuit to shorten it.</span>
+        <b>03</b><span>Solve the level by connecting every pair and filling every cell. Clear wipes the board to start over.</span>
+        <b>04</b><span>Levels never end. The grid grows from 5×5 up to 8×8 as you go. End the game from the pause menu to save your score.</span>
+      </div>
+      <div class="how" data-how="2048" hidden>
+        <b>01</b><span>Swipe up, down, left or right. Every tile slides as far as it can.</span>
+        <b>02</b><span>Two tiles with the same number merge into one worth both. Each merge adds its value to your score.</span>
+        <b>03</b><span>A new 2 or 4 appears after every move. Reach 2048 to overclock, then keep going.</span>
+        <b>04</b><span>The game ends when the grid is full and nothing can merge.</span>
       </div>
       <div class="how" data-how="classic" hidden>
         <b>01</b><span>Drag pieces from the tray onto the grid.</span>
@@ -432,6 +454,8 @@ td.rk{color:var(--dim);width:2em;}
         <button class="tab" data-rgame="daily" aria-selected="false" aria-label="Daily Sector">Daily</button>
         <button class="tab" data-rgame="surge" aria-selected="false" >Surge</button>
         <button class="tab" data-rgame="corrupt" aria-selected="false" aria-label="Corruption">Static</button>
+        <button class="tab" data-rgame="circuit" aria-selected="false" >Circuit</button>
+        <button class="tab" data-rgame="2048" aria-selected="false" >2048</button>
       </div>
       <div class="tabs" role="tablist">
         <button class="tab" role="tab" id="tBoard" aria-selected="true">Top 10</button>
@@ -467,9 +491,9 @@ let wallet = Object.assign({credits:0, destroy:0, wipe:0, shuffle:0}, store.get(
 const saveWallet = () => store.set('wallet', wallet);
 // two modes, each with its own saved run, stats and top 10 (classic keeps the original storage keys)
 // modes: Link (main), Gravity (Link with squares that always fall), Classic
-const MODES = ['link', 'gravity', 'dots', 'classic', 'rush', 'daily', 'surge', 'corrupt'];
-const MODE_NAMES = {link:'Link', gravity:'Gravity', dots:'Classic Dots', classic:'Classic Blocks', rush:'Rush', daily:'Daily Sector', surge:'Surge', corrupt:'Corruption'};
-const noPieces = m => isDots(m) || m === 'surge';                    // modes without a piece tray
+const MODES = ['link', 'gravity', 'dots', 'classic', 'rush', 'daily', 'surge', 'corrupt', 'circuit', '2048'];
+const MODE_NAMES = {link:'Link', gravity:'Gravity', dots:'Classic Dots', classic:'Classic Blocks', rush:'Rush', daily:'Daily Sector', surge:'Surge', corrupt:'Corruption', circuit:'Circuit', '2048':'2048'};
+const noPieces = m => isDots(m) || m === 'surge' || m === 'circuit' || m === '2048';                    // modes without a piece tray
 const STATIC = 9, STATIC_COL = '#5c6573';                            // Corruption: dead squares that can't be linked
 const isDots = m => m === 'dots' || m === 'rush';                     // full board, dots drop in, no pieces
 const RUSH_MS = 60000, RUSH_LOOP_MS = 3000;                         // Rush: 60 s clock, loops add 3 s
@@ -576,6 +600,8 @@ function freshRun(){
   if (isDots(game)){ S.tray = [null, null, null]; fillDots(); }
   if (game === 'surge'){ S.tray = [null, null, null]; S.surgeIn = 4; S.surges = 0; S.links = 0;
     do { S.board.fill(0); for (let y = N - 3; y < N; y++) for (let x = 0; x < N; x++) S.board[y*N + x] = randomDot(); } while (!hasLinkMove()); }
+  if (game === 'circuit'){ S.lvl = 1; newCircuit(); }
+  if (game === '2048'){ S.t = Array(16).fill(0); spawn2048(); spawn2048(); }
   if (game === 'corrupt'){ S.spreadIn = 3; S.purged = 0; seedStatic(); seedStatic(); }
   if (game === 'rush') S.timeLeft = RUSH_MS;
   if (!noPieces(game)) S.tray = dealTray();
@@ -1025,7 +1051,7 @@ function drawBg(now, dt){
 /* ======================= effects ======================= */
 let pops = [], clears = [], parts = [], floaters = [], banner = null, shake = null, dealAt = [0, 0, 0], rewind = 0, overAt = 0;
 let rings = [], stamp = null, flash = null;   // loop-streak effects (Classic Dots)
-function clearFx(){ pops = []; clears = []; parts = []; floaters = []; banner = null; shake = null; rings = []; stamp = null; flash = null; }
+function clearFx(){ anim2048 = null; miniPtr = null; pops = []; clears = []; parts = []; floaters = []; banner = null; shake = null; rings = []; stamp = null; flash = null; }
 
 /* ======================= gameplay ======================= */
 let drag = null, fitCache = [true, true, true];
@@ -1325,7 +1351,7 @@ function useShuffle(){
   filled.forEach((from, k) => { const to = spots[k]; nb[to] = S.board[from]; moves.push({from, to, v:S.board[from]}); });
   S.board = nb; S.used = (S.used || 0) + 1;
   const now = performance.now();
-  if (S.mode === 'gravity'){
+  if (S.mode === 'gravity' || S.mode === 'surge'){   // squares land at random, then fall
     const fall = new Map(dropMoves().map(m => [m.from, m.to]));
     const nb2 = Array(N*N).fill(0);
     for (const m of moves){ if (fall.has(m.to)) m.to = fall.get(m.to); nb2[m.to] = m.v; }
@@ -1426,7 +1452,16 @@ function hud(){
   if (!S) return;
   $('#best').textContent = fmt(Math.max(stats.best, S.score));
   const lk = hasShop(S.mode), dots = isDots(S.mode), daily = S.mode === 'daily', rush = S.mode === 'rush';
-  const press = S.mode === 'surge' || S.mode === 'corrupt';
+  const press = S.mode === 'surge' || S.mode === 'corrupt', mini = isMini(S.mode);
+  $('#btnClear').hidden = S.mode !== 'circuit';
+  if (mini){
+    $('#items').hidden = true; $('#btnShop').hidden = true; $('#linesStat').hidden = false; $('#btnMute').hidden = false;
+    const u = $('#btnUndo'); u.hidden = !settings.undo; u.classList.add('compact'); u.disabled = !history.length;
+    $('#chain').style.visibility = 'hidden'; $('#linesVal').classList.add('big'); $('#linesVal').classList.remove('low');
+    $('#linesStat .label').textContent = S.mode === 'circuit' ? `Level · ${S.c.G}×${S.c.G}` : 'Best tile';
+    $('#linesVal').textContent = S.mode === 'circuit' ? S.lvl : fmt(2 ** Math.max(...S.t));
+    return;
+  }
   // undo appears in every mode except Daily when it's turned on in Settings
   const u = $('#btnUndo'); u.hidden = !settings.undo || daily; u.classList.toggle('compact', lk);
   u.disabled = !history.length; $('#undoCount').textContent = history.length;
@@ -1471,6 +1506,7 @@ function dragGeom(d, now){
   return {x, y, s, gx, gy, ok: fits(tsi(d.si), gx, gy)};
 }
 stage.addEventListener('pointerdown', e => {
+  if (mode === 'play' && S && !S.over && isMini(S.mode) && !miniPtr){ miniDown(e); return; }
   if (mode !== 'play' || !S || S.over || drag || link) return;
   const p = pt(e), i = slotAt(p);
   if (target){   // an armed item: tap a square, or anywhere else to cancel
@@ -1497,6 +1533,7 @@ stage.addEventListener('pointerdown', e => {
   Snd.play('pick'); buzz(4);
 });
 stage.addEventListener('pointermove', e => {
+  if (miniPtr && e.pointerId === miniPtr.id){ miniMove(e); return; }
   const p = pt(e);
   if (link && e.pointerId === link.id){ link.px = p.x; link.py = p.y; const c = cellAt(p, true); if (c >= 0) linkTo(c); return; }
   if (!drag || e.pointerId !== drag.id) return; drag.x = p.x; drag.y = p.y;
@@ -1509,6 +1546,7 @@ function isDropSwipe(e){
   return dy > Math.max(L.cell * 2.5, 110) && dt < 600 && Math.abs(dx) < dy * .55;
 }
 function endDrag(e, cancel){
+  if (miniPtr && (!e || e.pointerId === miniPtr.id)){ miniUp(e, cancel); return; }
   const dropSwipe = !cancel && isDropSwipe(e); if (!e || !swipe || e.pointerId === swipe.id) swipe = null;
   if (link && (!e || e.pointerId === link.id)){
     if (dropSwipe && new Set(link.path).size < 2){ link = null; onShake(); return; }
@@ -1526,8 +1564,10 @@ function endDrag(e, cancel){
 let returning = null;
 stage.addEventListener('pointerup', e => endDrag(e, false));
 stage.addEventListener('pointercancel', e => endDrag(e, true));
-stage.addEventListener('lostpointercapture', e => { if ((drag && e.pointerId === drag.id) || (link && e.pointerId === link.id)) endDrag(e, false); else if (swipe && e.pointerId === swipe.id) swipe = null; });
+stage.addEventListener('lostpointercapture', e => {
+  if (miniPtr && e.pointerId === miniPtr.id){ miniUp(e, false); return; } if ((drag && e.pointerId === drag.id) || (link && e.pointerId === link.id)) endDrag(e, false); else if (swipe && e.pointerId === swipe.id) swipe = null; });
 window.addEventListener('keydown', e => {
+  if (mode === 'play' && S && S.mode === '2048' && !S.over){ const d = {ArrowLeft:0, a:0, ArrowRight:1, d:1, ArrowUp:2, w:2, ArrowDown:3, s:3}[e.key]; if (d != null){ e.preventDefault(); move2048(d); return; } }
   if ((e.key === 'z' && (e.ctrlKey || e.metaKey)) || (e.key === 'u' && mode === 'play')){ e.preventDefault(); if (mode === 'play' || mode === 'over') undo(); }
   if (e.key === 'g' && mode === 'play') onShake();
   if (e.key === 'Escape'){ if (mode === 'play') show('pause'); else if (mode === 'pause') show('play'); }
@@ -1550,6 +1590,222 @@ function bounceOut(k){ const n = 7.5625, d = 2.75;
   if (k < 1/d) return n*k*k; if (k < 2/d) return n*(k -= 1.5/d)*k + .75; if (k < 2.5/d) return n*(k -= 2.25/d)*k + .9375; return n*(k -= 2.625/d)*k + .984375; }
 function easeOutBack(k){ const c = 1.7; return 1 + (c+1)*Math.pow(k-1, 3) + c*Math.pow(k-1, 2); }
 
+/* ======================= Circuit and 2048: modes on their own grid sizes ======================= */
+const isMini = m => m === 'circuit' || m === '2048';
+const CIRCUIT_COLORS = ['#d6922f','#3fa3b3','#b84a3e','#8470bf','#c9c2a8','#6f9e4c','#c45f93','#5b7fc4'];
+// 2048 tiles climb a ramp of the game's palette, getting hotter as they grow
+const TILE_COLS = ['#8e979f','#3fa3b3','#457f70','#6f9e4c','#d6922f','#c0602c','#b84a3e','#c45f93','#8470bf','#5b7fc4','#29e6ff','#ffb22e','#ff3fa4'];
+let miniPtr = null, anim2048 = null, circuitDone = null;
+
+/* ---------- Circuit: connect each pair of matching nodes and fill every cell ---------- */
+const circuitSize = lvl => lvl <= 3 ? 5 : lvl <= 6 ? 6 : lvl <= 10 ? 7 : 8;
+function newCircuit(){
+  const G = circuitSize(S.lvl), T = G * G;
+  // a random path through every cell (serpentine, then scrambled with backbite moves)
+  let path = [];
+  for (let y = 0; y < G; y++) for (let i = 0; i < G; i++) path.push(y * G + (y % 2 ? G - 1 - i : i));
+  const nbrs = c => { const x = c % G, y = (c / G) | 0, o = []; if (x > 0) o.push(c - 1); if (x < G - 1) o.push(c + 1); if (y > 0) o.push(c - G); if (y < G - 1) o.push(c + G); return o; };
+  for (let it = 0; it < T * 40; it++){
+    if (rnd() < .5) path.reverse();
+    const n = path.length, end = path[n - 1], opts = nbrs(end).filter(c => c !== path[n - 2]);
+    const j = path.indexOf(opts[Math.floor(rnd() * opts.length)]);
+    path = path.slice(0, j + 1).concat(path.slice(j + 1).reverse());
+  }
+  // cut it into flows of 3+ cells; bigger boards get more flows
+  const k = Math.min(CIRCUIT_COLORS.length, Math.max(3, Math.round(T / (G <= 5 ? 5 : G <= 6 ? 6 : 7)) + (rnd() < .5 ? 0 : -1)));
+  const lens = Array(k).fill(3); for (let r = T - 3 * k; r > 0; r--) lens[Math.floor(rnd() * k)]++;
+  const ends = [], sol = []; let at = 0;
+  for (const len of lens){ ends.push([path[at], path[at + len - 1]]); sol.push(path.slice(at, at + len)); at += len; }
+  S.c = {G, ends, sol, paths: ends.map(() => []), solved:false};
+  circuitDone = null;
+}
+const circuitEndOf = c => { const E = S.c.ends; for (let k = 0; k < E.length; k++) if (E[k][0] === c || E[k][1] === c) return k; return -1; };
+const circuitOwner = c => { const P = S.c.paths; for (let k = 0; k < P.length; k++) if (P[k].includes(c)) return k; return -1; };
+const flowDone = k => { const P = S.c.paths[k], E = S.c.ends[k]; return P.length > 1 && ((P[0] === E[0] && P[P.length-1] === E[1]) || (P[0] === E[1] && P[P.length-1] === E[0])); };
+function circuitCell(p){
+  const G = S.c.G, cs = L.bs / G, x = Math.floor((p.x - L.bx) / cs), y = Math.floor((p.y - L.by) / cs);
+  return x < 0 || y < 0 || x >= G || y >= G ? -1 : y * G + x;
+}
+function circuitDown(p){
+  const c = circuitCell(p); if (c < 0) return false;
+  const e = circuitEndOf(c), o = circuitOwner(c);
+  if (e >= 0){ S.c.paths[e] = [c]; miniPtr.k = e; }
+  else if (o >= 0){ const P = S.c.paths[o]; S.c.paths[o] = P.slice(0, P.indexOf(c) + 1); miniPtr.k = o; }
+  else return false;
+  Snd.play('link', S.c.paths[miniPtr.k].length); buzz(4); return true;
+}
+function circuitStep(c){
+  const G = S.c.G, k = miniPtr.k, P = S.c.paths[k], last = P[P.length - 1];
+  if (c === last) return false;
+  const lx = last % G, ly = (last / G) | 0, cx = c % G, cy = (c / G) | 0;
+  if (Math.abs(lx - cx) + Math.abs(ly - cy) !== 1) return false;
+  if (P.includes(c)){ S.c.paths[k] = P.slice(0, P.indexOf(c) + 1); Snd.play('unlink'); return true; }   // backtrack
+  if (flowDone(k)) return false;                                                                         // finished: only backtracking
+  const e = circuitEndOf(c);
+  if (e >= 0 && e !== k) return false;                                                                   // another color's node blocks
+  const o = circuitOwner(c);
+  if (o >= 0 && o !== k){ const Q = S.c.paths[o]; S.c.paths[o] = Q.slice(0, Q.indexOf(c)); }              // cut through another circuit
+  P.push(c);
+  if (flowDone(k)){ Snd.play('loop'); buzz([12, 20, 12]); } else { Snd.play('link', Math.min(14, P.length)); buzz(3); }
+  return true;
+}
+function circuitMove(p){
+  const c = circuitCell(p); if (c < 0) return;
+  for (let guard = 0; guard < 12; guard++){          // walk one cell at a time toward the finger
+    const P = S.c.paths[miniPtr.k], last = P[P.length - 1]; if (c === last) return;
+    const G = S.c.G, lx = last % G, ly = (last / G) | 0, dx = c % G - lx, dy = ((c / G) | 0) - ly;
+    const next = Math.abs(dx) >= Math.abs(dy) ? last + Math.sign(dx) : last + Math.sign(dy) * G;
+    if (!circuitStep(next)) return;
+  }
+}
+function circuitUp(){
+  const C = S.c, T = C.G * C.G;
+  const filled = new Set(); C.paths.forEach(P => P.forEach(c => filled.add(c)));
+  if (!C.solved && C.ends.every((_, k) => flowDone(k)) && filled.size === T){
+    C.solved = true;
+    const now = performance.now(), pts = T * 10 + S.lvl * 50;
+    addScore(pts); S.lines++; S.maxStreak = Math.max(S.maxStreak, S.lvl);
+    banner = {t:now, col:'#29e6ff', text:'Circuit complete', sub:`Level ${S.lvl} · +${fmt(pts)}`};
+    floaters.push({x:L.bx + L.bs/2, y:L.by + L.bs*.7, text:'+' + fmt(pts), t:now, col:'#29e6ff', big:true});
+    Snd.play('record'); buzz([20, 30, 40]);
+    circuitDone = now;
+    setTimeout(() => { if (S && S.mode === 'circuit' && S.c.solved){ S.lvl++; newCircuit(); saveRun(); hud(); Snd.play('deal'); } }, 1600);
+  }
+  saveRun(); hud();
+}
+function drawCircuit(g, now){
+  const C = S.c, G = C.G, cs = L.bs / G, {bx, by, bs} = L;
+  frameMini(g, G, cs);
+  const ctr = c => [bx + (c % G + .5) * cs, by + (((c / G) | 0) + .5) * cs];
+  C.paths.forEach((P, k) => {
+    if (!P.length) return;
+    const col = CIRCUIT_COLORS[k], done = flowDone(k);
+    g.fillStyle = hexA(col, done ? .2 : .12);
+    for (const c of P) g.fillRect(bx + (c % G) * cs + 2, by + ((c / G) | 0) * cs + 2, cs - 4, cs - 4);
+    g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
+    g.beginPath(); P.forEach((c, i) => { const [x, y] = ctr(c); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+    if (miniPtr && miniPtr.k === k && !done && miniPtr.px != null) g.lineTo(Math.max(bx, Math.min(bx + bs, miniPtr.px)), Math.max(by, Math.min(by + bs, miniPtr.py)));
+    g.strokeStyle = hexA(col, done ? .45 : .3); g.lineWidth = cs * .32; g.shadowColor = col; g.shadowBlur = cs * (done ? .45 : .3); g.stroke();
+    g.shadowBlur = 0; g.strokeStyle = col; g.lineWidth = cs * .12; g.stroke();
+    g.strokeStyle = 'rgba(255,245,225,.7)'; g.lineWidth = Math.max(1, cs * .035); g.stroke();
+    g.restore();
+  });
+  C.ends.forEach((E, k) => {
+    const done = flowDone(k);
+    for (const c of E){ const x = bx + (c % G) * cs, y = by + ((c / G) | 0) * cs;
+      drawTile(g, CIRCUIT_COLORS[k], x + cs * .1, y + cs * .1, cs * .8, 'nodeLit', done ? 1 : .8 + .2 * Math.sin(now / 300 + k), done ? 1 + .04 * Math.sin(now / 200) : 1); }
+  });
+  if (circuitDone){ const k = (now - circuitDone) / 900; if (k < 1){ g.fillStyle = `rgba(41,230,255,${.18 * (1 - k)})`; g.fillRect(bx, by, bs, bs); } }
+}
+
+/* ---------- 2048: swipe to slide every tile; equal tiles merge ---------- */
+function spawn2048(){
+  const empty = []; S.t.forEach((v, i) => { if (!v) empty.push(i); });
+  if (!empty.length) return -1;
+  const i = empty[Math.floor(rnd() * empty.length)]; S.t[i] = rnd() < .9 ? 1 : 2; return i;
+}
+function canMove2048(t = S.t){
+  for (let i = 0; i < 16; i++){ if (!t[i]) return true; const x = i % 4;
+    if (x < 3 && t[i] === t[i + 1]) return true; if (i < 12 && t[i] === t[i + 4]) return true; }
+  return false;
+}
+function move2048(dir){   // 0 left, 1 right, 2 up, 3 down
+  if (anim2048 && performance.now() - anim2048.t < 90) return;
+  const lines = [];
+  for (let a = 0; a < 4; a++){
+    const L4 = [];
+    for (let b = 0; b < 4; b++){
+      const i = dir < 2 ? a * 4 + (dir === 0 ? b : 3 - b) : (dir === 2 ? b : 3 - b) * 4 + a;
+      L4.push(i);
+    }
+    lines.push(L4);
+  }
+  const before = JSON.stringify(S), nt = Array(16).fill(0), moves = [], merged = [];
+  let gained = 0;
+  for (const L4 of lines){
+    let w = 0, lastV = 0, lastAt = -1;
+    for (const i of L4){
+      const v = S.t[i]; if (!v) continue;
+      if (v === lastV && lastAt >= 0){
+        nt[L4[lastAt]] = v + 1; gained += 2 ** (v + 1); merged.push(L4[lastAt]);
+        moves.push({from:i, to:L4[lastAt], v}); lastV = 0; lastAt = -1;
+      } else {
+        nt[L4[w]] = v; moves.push({from:i, to:L4[w], v}); lastV = v; lastAt = w; w++;
+      }
+    }
+  }
+  if (nt.every((v, i) => v === S.t[i])){ buzz(6); return; }
+  if (settings.undo) history.push(JSON.stringify({s:JSON.parse(before), w:null}));
+  S.t = nt; S.lines++;
+  const sp = spawn2048(), now = performance.now();
+  anim2048 = {t:now, moves, merged, spawn:sp};
+  const top = Math.max(...S.t); S.maxStreak = Math.max(S.maxStreak, 2 ** top);
+  if (gained){ addScore(gained); Snd.play('place', merged.length * 3); buzz(merged.length > 1 ? [10, 15, 10] : 8);
+    if (merged.length > 1) floaters.push({x:L.bx + L.bs/2, y:L.by - 4, text:'+' + fmt(gained), t:now, col:TILE_COLS[(top - 1) % TILE_COLS.length]}); }
+  else Snd.play('pick');
+  if (top >= 11 && !S.won){ S.won = true; banner = {t:now + 200, col:'#ffb22e', text:'Overclocked', sub:'2048 reached. Keep going'}; Snd.play('purge'); }
+  if (!canMove2048()){ S.over = true; overAt = now + 700; }
+  saveRun(); hud();
+}
+function draw2048(g, now){
+  const cs = L.bs / 4, {bx, by} = L;
+  frameMini(g, 4, cs);
+  const A = anim2048, k = A ? Math.min(1, (now - A.t) / 120) : 1, e = 1 - Math.pow(1 - k, 3);
+  const tileAt = (v, x, y, sc = 1, a = 1) => {
+    const col = TILE_COLS[(v - 1) % TILE_COLS.length], pad = cs * .06;
+    drawTile(g, col, x + pad, y + pad, cs - pad * 2, 'solid', a, sc);
+    const num = String(2 ** v), fs = cs * (num.length <= 2 ? .3 : num.length === 3 ? .25 : num.length === 4 ? .2 : .16) * sc;
+    g.save(); g.globalAlpha = a; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `${fs}px Michroma, "Arial Black", sans-serif`;
+    g.shadowColor = col; g.shadowBlur = cs * .25; g.fillStyle = '#f4feff'; g.fillText(num, x + cs/2, y + cs/2 + cs * .02); g.restore();
+  };
+  if (k < 1){
+    for (const m of A.moves){ const fx = m.from % 4, fy = m.from >> 2, tx = m.to % 4, ty = m.to >> 2;
+      tileAt(m.v, bx + (fx + (tx - fx) * e) * cs, by + (fy + (ty - fy) * e) * cs); }
+    return;
+  }
+  for (let i = 0; i < 16; i++){
+    const v = S.t[i]; if (!v) continue;
+    let sc = 1, a = 1; const since = A ? now - A.t - 120 : 999;
+    if (A && A.merged.includes(i) && since < 160) sc = 1 + .14 * Math.sin(Math.PI * since / 160);
+    if (A && A.spawn === i && since < 180){ sc = .3 + .7 * easeOutBack(Math.max(0, since) / 180); a = Math.min(1, .3 + since / 180); }
+    tileAt(v, bx + (i % 4) * cs, by + (i >> 2) * cs, sc, a);
+  }
+}
+
+/* ---------- shared: a grid frame for any size, and touch handling ---------- */
+function frameMini(g, G, cs){
+  const {bx, by, bs} = L, pad = 8;
+  g.fillStyle = 'rgba(5,10,22,.94)'; g.fillRect(bx - pad, by - pad, bs + pad*2, bs + pad*2);
+  for (let y = 0; y < G; y++) for (let x = 0; x < G; x++){ g.fillStyle = (x + y) % 2 ? 'rgba(22,44,78,.32)' : 'rgba(22,44,78,.22)'; g.fillRect(bx + x*cs + cs*.04, by + y*cs + cs*.04, cs*.92, cs*.92); }
+  g.strokeStyle = 'rgba(41,230,255,.32)'; g.lineWidth = 1; g.strokeRect(bx - pad + .5, by - pad + .5, bs + pad*2 - 1, bs + pad*2 - 1);
+  g.save(); g.strokeStyle = '#29e6ff'; g.lineWidth = 2; g.shadowColor = '#29e6ff'; g.shadowBlur = 8;
+  const kk = Math.min(26, cs * .4), o = -pad + 1, E = bs + pad - 1; g.translate(bx, by); g.beginPath();
+  g.moveTo(o, o + kk); g.lineTo(o, o); g.lineTo(o + kk, o); g.moveTo(E - kk, o); g.lineTo(E, o); g.lineTo(E, o + kk);
+  g.moveTo(E, E - kk); g.lineTo(E, E); g.lineTo(E - kk, E); g.moveTo(o + kk, E); g.lineTo(o, E); g.lineTo(o, E - kk); g.stroke(); g.restore();
+}
+function drawMini(g, now){
+  if (S.mode === 'circuit') drawCircuit(g, now); else draw2048(g, now);
+  for (const p of parts){ const age = now - p.t; if (age > p.life) continue; g.globalAlpha = 1 - age / p.life; g.fillStyle = p.col; g.fillRect(p.x + p.vx*age, p.y + p.vy*age + .00012*age*age, p.s, p.s); }
+  g.globalAlpha = 1; parts = parts.filter(p => now - p.t < p.life);
+}
+function miniDown(e){
+  const p = pt(e); e.preventDefault();
+  miniPtr = {id:e.pointerId, x:p.x, y:p.y, px:p.x, py:p.y, t:performance.now(), k:-1};
+  if (S.mode === 'circuit'){
+    const before = JSON.stringify({s:S, w:null});
+    if (!S.c.solved && circuitDown(p)){ if (settings.undo) history.push(before); } else { miniPtr = null; return; }
+  }
+  try{ stage.setPointerCapture(e.pointerId); }catch(_){}
+}
+function miniMove(e){ const p = pt(e); miniPtr.px = p.x; miniPtr.py = p.y; if (S.mode === 'circuit') circuitMove(p); }
+function miniUp(e, cancel){
+  const m = miniPtr; miniPtr = null; if (cancel) return;
+  if (S.mode === 'circuit'){ circuitUp(); return; }
+  const p = pt(e), dx = p.x - m.x, dy = p.y - m.y;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+  move2048(Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 0 : 1) : (dy < 0 ? 2 : 3));
+}
+
 function render(now){
   const g = sctx; g.setTransform(DPR, 0, 0, DPR, 0, 0); g.clearRect(0, 0, W, H);
   if (!S || !gridLayer) return;
@@ -1557,6 +1813,7 @@ function render(now){
   if (shake){ const k = (now - shake.t) / 380; if (k >= 1) shake = null; else { const m = shake.mag * (1 - k); ox = (Math.random()*2-1)*m; oy = (Math.random()*2-1)*m; } }
   g.translate(ox, oy);
   const {cell, bx, by, bs} = L;
+  if (isMini(S.mode)) drawMini(g, now); else {
   g.drawImage(gridLayer.c, bx - gridLayer.pad, by - gridLayer.pad, bs + gridLayer.pad*2, bs + gridLayer.pad*2);
 
   // drag preview
@@ -1684,6 +1941,7 @@ function render(now){
     g.beginPath(); g.arc(r.x, r.y, cell * .3 + r.max * e, 0, Math.PI * 2); g.stroke(); g.restore();
   }
   rings = rings.filter(r => now - r.t < 700);
+  }   // end of the 8x8 board
   // floating score
   g.textAlign = 'center'; g.textBaseline = 'middle';
   for (const f of floaters){
@@ -1752,7 +2010,7 @@ let last = performance.now(), bgSkip = 0;
 function frame(now){
   const dt = Math.min(64, now - last); last = now;
   if (mode === 'play' && S && S.mode === 'rush' && !S.over && !document.hidden) tickRush(dt, now);
-  if (mode === 'play' || mode === 'over' || drag || link) render(now);
+  if (mode === 'play' || mode === 'over' || drag || link || miniPtr) render(now);
   if (!reduceMotion || (bgSkip++ % 6 === 0)) drawBg(now, dt);
   requestAnimationFrame(frame);
 }
@@ -1786,8 +2044,9 @@ function gameOver(manual){
   $('#oNew').hidden = daily; $('#oDaily').hidden = !daily;
   const fresh = S.score > stats.best && S.score > 0, lk = isLink(S.mode);
   $('#oScore').textContent = fmt(S.score);
-  $('#oL1').textContent = lk ? 'Cleared' : 'Lines';  $('#oLines').textContent = lk ? S.dots : S.lines;
-  $('#oL2').textContent = lk ? 'Longest link' : 'Best chain'; $('#oChain').textContent = lk ? S.bestLink : S.maxStreak;
+  const cir = S.mode === 'circuit', t48 = S.mode === '2048';
+  $('#oL1').textContent = lk ? 'Cleared' : cir ? 'Solved' : t48 ? 'Best tile' : 'Lines';  $('#oLines').textContent = lk ? S.dots : t48 ? fmt(S.maxStreak) : S.lines;
+  $('#oL2').textContent = lk ? 'Longest link' : cir ? 'Level' : t48 ? 'Moves' : 'Best chain'; $('#oChain').textContent = lk ? S.bestLink : cir ? S.lvl : t48 ? S.lines : S.maxStreak;
   $('#oL3').textContent = lk ? 'Loops' : 'Undos'; $('#oUndos').textContent = lk ? S.loops : S.undos;
   $('#oRecord').hidden = !fresh;
   if (daily){ recordRun(); $('#oDaily').textContent = `Today's board is done. A new one unlocks tomorrow.`; }
@@ -1923,7 +2182,7 @@ function renderRecords(){
   const d = t => new Date(t).toLocaleDateString(undefined, {month:'short', day:'numeric'});
   const lk = isLink(game);
   $$('#rMode .tab').forEach(b => b.setAttribute('aria-selected', b.dataset.rgame === game));
-  const cols = lk ? [['Cleared','dots'], ['Link','link'], ['Loops','loops']] : [['Lines','lines'], ['Chain','chain'], ['Undos','undos']];
+  const cols = lk ? [['Cleared','dots'], ['Link','link'], ['Loops','loops']] : game === 'circuit' ? [['Solved','lines'], ['Level','chain'], ['Undos','undos']] : game === '2048' ? [['Tile','chain'], ['Moves','lines'], ['Undos','undos']] : [['Lines','lines'], ['Chain','chain'], ['Undos','undos']];
   $('#rBoard').innerHTML = board10.length ? `<div style="overflow-x:auto"><table>
     <thead><tr><th>#</th><th>Score</th>${cols.map(c => `<th>${c[0]}</th>`).join('')}<th>Date</th></tr></thead><tbody>
     ${board10.map((r, i) => `<tr class="${r.id === lastRecordedId ? 'fresh' : (i === 0 ? 'top' : '')}"><td class="rk">${String(i+1).padStart(2,'0')}</td><td>${fmt(r.score)}</td>${cols.map(c => `<td>${r[c[1]] ?? 0}</td>`).join('')}<td>${d(r.date)}</td></tr>`).join('')}
@@ -1931,6 +2190,8 @@ function renderRecords(){
   const avg = stats.games ? Math.round(stats.total / stats.games) : 0;
   const items = lk
     ? [['Games', stats.games], ['Best', fmt(stats.best)], ['Average', fmt(avg)], ['Squares cleared', fmt(stats.dots)], ['Longest link', stats.bestLink], ['Loops', fmt(stats.loops)], game === 'dots' ? ['Length', 'Endless'] : game === 'rush' ? ['Clock', '60s + 3s a loop'] : game === 'daily' ? ['Days in a row', stats.dayStreak || 0] : game === 'surge' ? ['Best rows survived', stats.bestSurges || 0] : game === 'corrupt' ? ['Static purged', fmt(stats.purged || 0)] : ['Pieces placed', fmt(stats.placed)], hasShop(game) ? ['Credits', fmt(wallet.credits)] : game === 'daily' ? ['Best streak', stats.bestDayStreak || 0] : ['Mode', MODE_NAMES[game]]]
+    : game === 'circuit' ? [['Games', stats.games], ['Best', fmt(stats.best)], ['Average', fmt(avg)], ['Circuits solved', fmt(stats.lines)], ['Highest level', stats.bestChain], ['Undos', fmt(stats.undos)]]
+    : game === '2048' ? [['Games', stats.games], ['Best', fmt(stats.best)], ['Average', fmt(avg)], ['Best tile', fmt(stats.bestChain)], ['Moves', fmt(stats.lines)], ['Undos', fmt(stats.undos)]]
     : [['Games', stats.games], ['Best', fmt(stats.best)], ['Average', fmt(avg)], ['Lines', fmt(stats.lines)], ['Best chain', stats.bestChain], ['Most lines at once', stats.bestMulti || 0], ['Pieces placed', fmt(stats.placed)], ['Undos', fmt(stats.undos)]];
   $('#rStats').innerHTML = `<div class="statgrid">${items.map(([k, v]) => `<div><span>${k}</span><span>${v}</span></div>`).join('')}</div>`;
 }
@@ -1966,6 +2227,7 @@ $$('.item').forEach(b => b.onclick = () => {
   if (k === 'shuffle'){ setTarget(null); useShuffle(); return; }
   setTarget(target === k ? null : k);
 });
+$('#btnClear').onclick = () => { if (S && S.mode === 'circuit' && !S.c.solved){ if (settings.undo) history.push(JSON.stringify({s:S, w:null})); S.c.paths = S.c.ends.map(() => []); saveRun(); hud(); Snd.play('undo'); } };
 $('#hintCancel').onclick = () => {
   if (target) return setTarget(null);
   if (S && S.stuck) confirmTap($('#hintCancel'), 'Tap to confirm', 'End game', () => { S.stuck = false; S.over = true; syncHint(); saveRun(); gameOver(true); });
@@ -2029,7 +2291,7 @@ window.sector8Save = () => saveRun();
 
 // test hook
 window.sector8 = { get S(){ return S; }, get history(){ return history; }, place, undo, startNew, SHAPES, fits, L:() => L, show, get mode(){ return mode; },
-  setGame, hasLinkMove, pushRow, spreadStatic, STATIC, today, daySeed, get rngState(){ return S && S.rng; }, refreshFits, get game(){ return game; }, get link(){ return link; },
+  setGame, hasLinkMove, move2048, flowDone, circuitUp, pushRow, spreadStatic, STATIC, today, daySeed, get rngState(){ return S && S.rng; }, refreshFits, get game(){ return game; }, get link(){ return link; },
   get wallet(){ return wallet; }, settings, settleDots, get fx(){ return {rings: rings.length, stamp: stamp && stamp.text, flash: !!flash}; }, onShake, dropMoves, BONUS, ITEMS, buy, useShuffle, setTarget, get target(){ return target; }, setSetting };
 })();
 </script>
