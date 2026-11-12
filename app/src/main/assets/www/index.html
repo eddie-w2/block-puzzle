@@ -212,7 +212,7 @@ td.rk{color:var(--dim);width:2em;}
 .toggles.four .tog:last-child:nth-child(odd){grid-column:span 2;}
 
 #toast{position:absolute;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:12;pointer-events:none;
-  font:600 12px/1 var(--f-ui);letter-spacing:.24em;text-transform:uppercase;color:var(--ink);background:rgba(8,14,28,.9);border:1px solid var(--line);padding:10px 14px;opacity:0;transition:opacity .25s;white-space:nowrap;}
+  font:600 12px/1 var(--f-ui);letter-spacing:.24em;text-transform:uppercase;color:var(--ink);background:rgba(8,14,28,.9);border:1px solid var(--line);padding:10px 14px;opacity:0;transition:opacity .25s;white-space:normal;width:max-content;max-width:calc(100% - 32px);text-align:center;line-height:1.5;}
 #toast.show{opacity:1;}
 @media (prefers-reduced-motion: reduce){ .kanji{animation:none} .overlay{animation:none} }
 </style>
@@ -305,7 +305,7 @@ td.rk{color:var(--dim);width:2em;}
       <div class="how" data-how="dots" hidden>
         <b>01</b><span>The board starts full of colored squares (dots). There are no pieces to place.</span>
         <b>02</b><span>Drag across touching dots of one color (up, down or sideways) and let go to clear them. Each dot is worth 10 points.</span>
-        <b>03</b><span>Close a loop to clear every dot of that color.</span>
+        <b>03</b><span>Close a loop to clear every dot of that color. Loops in a row multiply their points: the second is ×2, the third ×3, and so on. A regular link resets the streak.</span>
         <b>04</b><span>Cleared dots leave gaps, the dots above fall, and new dots drop in from the top.</span>
         <b>05</b><span>You earn credits and can use the same shop and items as Link. A destroyed or wiped square's gap fills from above.</span>
         <b>06</b><span>It's endless: if nothing can be linked, the board reshuffles. To finish and save your score, choose End game in the pause menu.</span>
@@ -553,7 +553,7 @@ function settleDots(now, delay, exclude){
   if (moves.length) shuffleAnim = {t:now + delay, moves, drop:true, dur:640};
   // nothing to link? reshuffle, like the original games
   if (!hasLinkMove()){
-    setTimeout(() => toast('No matches left, so the dots were reshuffled'), delay + 700);
+    setTimeout(() => toast('No matches left. Reshuffled'), delay + 700);
     do { for (let i = N*N - 1; i > 0; i--){ const j = Math.floor(rnd() * (i + 1)); [S.board[i], S.board[j]] = [S.board[j], S.board[i]]; } } while (!hasLinkMove());
     shuffleAnim = {t:now + delay, moves:S.board.map((v, i) => ({fx:i % N, fy:(i / N | 0) - N, to:i, v, delay:(N - 1 - (i / N | 0)) * 18})), drop:true, dur:700};
   }
@@ -682,6 +682,7 @@ const Snd = {
       case 'link': { const sc = [62,65,67,69,72,74,77,79,81,84,86,89,91,93]; this.tone({type:'triangle', f:H(sc[Math.min(n - 1, sc.length - 1)]), d:.22, g:.07, verb:.35}); this.tone({type:'sine', f:H(sc[Math.min(n - 1, sc.length - 1)] + 12), d:.12, g:.025}); break; }
       case 'unlink': this.tone({type:'triangle', f:H(57), d:.08, g:.04}); break;
       case 'loop': [62,69,74,78].forEach((m,i)=>this.tone({type:'sawtooth', f:H(m), t:i*.03, d:.7, g:.045, cut:2400, verb:.8})); this.tone({type:'sine', f:110, f2:55, d:.5, g:.3}); break;
+      case 'streak': { const base = 62 + Math.min(12, (n - 2) * 2); [0, 4, 7, 12, 16].slice(0, Math.min(5, n + 1)).forEach((d, i) => this.tone({type:'sawtooth', f:H(base + d), t:.18 + i*.06, d:.5, g:.05, cut:3200, verb:.8})); this.tone({type:'sine', f:80, f2:35, d:.7, g:.4}); break; }
       case 'drop': [0,1,2].forEach(i => this.tone({type:'sine', f:120 - i*20, f2:45, t:.12 + i*.07, d:.18, g:.28})); this.noise({d:.35, g:.07, f:900, f2:200, q:1}); break;
       case 'tick': this.tone({type:'square', f:H(81), d:.04, g:.025, cut:2500}); break;
       case 'deal': [0,1,2].forEach(i=>this.tone({type:'square', f:H(81+i*2), t:i*.06, d:.05, g:.03, cut:3000})); break;
@@ -940,7 +941,8 @@ function drawBg(now, dt){
 
 /* ======================= effects ======================= */
 let pops = [], clears = [], parts = [], floaters = [], banner = null, shake = null, dealAt = [0, 0, 0], rewind = 0, overAt = 0;
-function clearFx(){ pops = []; clears = []; parts = []; floaters = []; banner = null; shake = null; }
+let rings = [], stamp = null, flash = null;   // loop-streak effects (Classic Dots)
+function clearFx(){ pops = []; clears = []; parts = []; floaters = []; banner = null; shake = null; rings = []; stamp = null; flash = null; }
 
 /* ======================= gameplay ======================= */
 let drag = null, fitCache = [true, true, true];
@@ -1048,6 +1050,17 @@ function linkTo(c){
     if (link.path.length === before && link.loop === wasLoop) return;   // blocked
   }
 }
+// a louder clear for a loop streak: ×N stamp, shockwaves, a flash, extra sparks
+function loopStreakFx(x, y, col, mult, set, now, sub){
+  banner = null;
+  stamp = {t:now + 120, text:'×' + mult, col, sub};
+  flash = {t:now, col, a:Math.min(.32, .12 + mult * .05)};
+  const waves = Math.min(4, mult);
+  for (let k = 0; k < waves; k++) rings.push({x, y, t:now + k * 110, col, max:L.bs * (.55 + k * .12)});
+  if (!reduceMotion) for (const i of set) burst(L.bx + (i % N + .5)*L.cell, L.by + ((i / N | 0) + .5)*L.cell, col, Math.min(8, 2 + mult));
+  Snd.play('streak', mult);
+}
+
 function resolveLink(){
   const P = link.path, v = link.v, loop = link.loop; link = null;
   const uniq = [...new Set(P)];
@@ -1080,15 +1093,21 @@ function resolveLink(){
   const purge = !dots && S.board.every(x => !x);
   if (purge) bonuses.push(['Sector purged', BONUS.purge]);
   for (const b of bonuses) pts += b[1];
+  // Classic Dots: loops in a row multiply (×1, ×2, ×3 …); any plain link resets the streak
+  let mult = 1;
+  if (dots){ if (loop){ S.loopChain = (S.loopChain || 0) + 1; mult = S.loopChain; } else S.loopChain = 0; }
+  const base = pts; pts *= mult;
   addScore(pts);
   if (bonuses.length){
     const top = bonuses.reduce((a, b) => b[1] > a[1] ? b : a);
     banner = {t:now, col: purge ? '#ffb22e' : col, text: top[0], sub: bonuses.map(b => `${b[0]} +${b[1]}`).join(' · ')};
-  } else if (loop) banner = {t:now, col, text:'Loop', sub:`${set.size} squares`};
-  if ((loop || n >= 6) && !reduceMotion) shake = {t:now, mag:Math.min(9, 3 + set.size * .3)};
+  } else if (loop && mult === 1) banner = {t:now, col, text:'Loop', sub:`${set.size} squares`};
+  if ((loop || n >= 6) && !reduceMotion) shake = {t:now, mag:Math.min(9, 3 + set.size * .3) + (mult > 1 ? Math.min(6, mult * 1.5) : 0)};
   Snd.play('clear', Math.min(4, Math.ceil(n / 2)), Math.min(4, n - 2)); if (purge) Snd.play('purge');
-  buzz(loop ? [25, 40, 35] : 18);
-  floaters.push({x:L.bx + (mx + .5)*L.cell, y:L.by + (my + .5)*L.cell, text:'+' + pts, t:now, col, big:true});
+  buzz(loop ? (mult > 1 ? [30, 30, 40, 30, 60] : [25, 40, 35]) : 18);
+  const fx = L.bx + (mx + .5)*L.cell, fy = L.by + (my + .5)*L.cell;
+  if (mult === 1) floaters.push({x:fx, y:fy, text:'+' + fmt(pts), t:now, col, big:true});
+  if (mult > 1) loopStreakFx(fx, fy, col, mult, set, now, `${set.size} dots · ${fmt(base)} × ${mult} = ${fmt(pts)}`);
   settle(now, Math.min(900, 340 + n * 40));
   if (dots){ settleDots(now, Math.min(700, 300 + n * 30), 0); }
   refreshFits();
@@ -1495,6 +1514,17 @@ function render(now){
   // dragged piece on top
   if (dg){ drawPiece(g, drag.si, dg.x, dg.y, dg.s, 'solid', dg.ok ? 1 : .85); }
 
+  // loop streak: board flash, expanding shockwave rings and the big ×N stamp
+  if (flash){ const k = (now - flash.t) / 420; if (k >= 1) flash = null; else { g.fillStyle = hexA(flash.col, flash.a * (1 - k)); g.fillRect(bx, by, bs, bs); } }
+  for (const r of rings){
+    const k = (now - r.t) / 700; if (k < 0 || k > 1) continue;
+    const e = 1 - Math.pow(1 - k, 3);
+    g.save(); g.beginPath(); g.rect(bx - 6, by - 6, bs + 12, bs + 12); g.clip();
+    g.strokeStyle = hexA(r.col, (1 - k) * .9); g.lineWidth = Math.max(1.5, cell * .14 * (1 - k));
+    g.shadowColor = r.col; g.shadowBlur = cell * .5;
+    g.beginPath(); g.arc(r.x, r.y, cell * .3 + r.max * e, 0, Math.PI * 2); g.stroke(); g.restore();
+  }
+  rings = rings.filter(r => now - r.t < 700);
   // floating score
   g.textAlign = 'center'; g.textBaseline = 'middle';
   for (const f of floaters){
@@ -1507,6 +1537,28 @@ function render(now){
   }
   floaters = floaters.filter(f => now - f.t < 900);
 
+  if (stamp){
+    // one combined card: caption, a big ×N that slams in and settles, the points math underneath
+    const k = (now - stamp.t) / 1300;
+    if (k > 1) stamp = null; else if (k >= 0){
+      const pop = k < .16 ? 2.3 - 1.3 * easeOutBack(k / .16) : 1;
+      const a = k < .75 ? 1 : (1 - k) / .25;
+      const fs = Math.min(104, bs * .25), cy = by + bs * .44;
+      g.save(); g.globalAlpha = a; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillStyle = 'rgba(4,6,12,.6)'; g.fillRect(bx, cy - fs * .95, bs, fs * 2.05);
+      const inK = Math.min(1, k / .12);
+      g.fillStyle = hexA(stamp.col, .9); g.fillRect(bx, cy - fs * .95, bs * inK, 2); g.fillRect(bx + bs * (1 - inK), cy + fs * 1.1 - 2, bs * inK, 2);
+      g.font = `${Math.round(fs * .17)}px "Share Tech Mono", monospace`; g.fillStyle = hexA(stamp.col, .95);
+      g.fillText('LOOP STREAK', bx + bs/2, cy - fs * .66);
+      g.font = `${fs * pop}px Michroma, "Arial Black", sans-serif`;
+      g.shadowColor = stamp.col; g.shadowBlur = 30; g.fillStyle = '#f4feff'; g.fillText(stamp.text, bx + bs/2, cy + fs * .1);
+      g.shadowBlur = 0;
+      let sfs = Math.round(fs * .2); g.font = `${sfs}px "Share Tech Mono", monospace`;
+      while (sfs > 9 && g.measureText(stamp.sub.toUpperCase()).width > bs - 16){ sfs--; g.font = `${sfs}px "Share Tech Mono", monospace`; }
+      g.fillStyle = hexA(stamp.col, .95); g.fillText(stamp.sub.toUpperCase(), bx + bs/2, cy + fs * .86);
+      g.restore();
+    }
+  }
   // banner
   if (banner){
     const k = (now - banner.t) / 1300;
@@ -1799,7 +1851,7 @@ window.sector8Save = () => saveRun();
 // test hook
 window.sector8 = { get S(){ return S; }, get history(){ return history; }, place, undo, startNew, SHAPES, fits, L:() => L, show, get mode(){ return mode; },
   setGame, hasLinkMove, refreshFits, get game(){ return game; }, get link(){ return link; },
-  get wallet(){ return wallet; }, settings, settleDots, onShake, dropMoves, BONUS, ITEMS, buy, useShuffle, setTarget, get target(){ return target; }, setSetting };
+  get wallet(){ return wallet; }, settings, settleDots, get fx(){ return {rings: rings.length, stamp: stamp && stamp.text, flash: !!flash}; }, onShake, dropMoves, BONUS, ITEMS, buy, useShuffle, setTarget, get target(){ return target; }, setSetting };
 })();
 </script>
 
